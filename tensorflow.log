@@ -1,0 +1,23 @@
+2018-06-15 15:00:31,557 - tensorflow - INFO - {'data_set': 'paths-1000', 'os_type': 'DARWIN', 'data_path': '/Users/jiangjunfang/Desktop/code2vec/data', 'context_bag_size': 100, 'node_embedding_size': 50, 'path_embedding_size': 50, 'allow_soft_placement': True, 'log_device_placement': False, 'optimizer': 'adam', 'FC1': 50}
+2018-06-15 15:00:31,650 - tensorflow - INFO - Read from cache...
+2018-06-15 15:00:31,680 - tensorflow - INFO - Training set: (1759, 100, 3)
+2018-06-15 15:00:31,680 - tensorflow - INFO - Validation set: (586, 100, 3)
+2018-06-15 15:00:31,680 - tensorflow - INFO - Test set: (587, 100, 3)
+2018-06-15 15:00:32,438 - tensorflow - INFO - inputs Tensor("model/embedding/concat:0", shape=(?, 100, 150), dtype=float32, device=/device:CPU:0)
+2018-06-15 15:00:32,452 - tensorflow - INFO - encode_inputs: Tensor("model/embedding/encode/Reshape_1:0", shape=(?, 100, 50), dtype=float32, device=/device:CPU:0)
+2018-06-15 15:00:32,570 - tensorflow - INFO - attention: Tensor("model/embedding/attention/Sum:0", shape=(?, 50), dtype=float32, device=/device:CPU:0)
+2018-06-15 15:00:32,626 - tensorflow - INFO - outputs: Tensor("model/embedding/regression/MatMul:0", shape=(?, 1), dtype=float32, device=/device:CPU:0)
+2018-06-15 15:00:32,873 - tensorflow - INFO - inputs Tensor("model_1/embedding/concat:0", shape=(?, 100, 150), dtype=float32, device=/device:CPU:0)
+2018-06-15 15:00:32,877 - tensorflow - INFO - encode_inputs: Tensor("model_1/embedding/encode/Reshape_1:0", shape=(?, 100, 50), dtype=float32, device=/device:CPU:0)
+2018-06-15 15:00:32,952 - tensorflow - INFO - attention: Tensor("model_1/embedding/attention/Sum:0", shape=(?, 50), dtype=float32, device=/device:CPU:0)
+2018-06-15 15:00:32,979 - tensorflow - INFO - outputs: Tensor("model_1/embedding/regression/MatMul:0", shape=(?, 1), dtype=float32, device=/device:CPU:0)
+2018-06-15 15:00:34,377 - tensorflow - INFO - Epoch 1: train-loss: 0.13383791, val-loss: 0.08301220, cost-time: 1.2690 s
+2018-06-15 15:00:35,589 - tensorflow - INFO - Epoch 2: train-loss: 0.06475132, val-loss: 0.06109304, cost-time: 1.2116 s
+2018-06-15 15:00:37,414 - tensorflow - INFO - Epoch 3: train-loss: 0.03793474, val-loss: 0.05335576, cost-time: 1.8249 s
+2018-06-15 15:00:38,691 - tensorflow - INFO - Epoch 4: train-loss: 0.02161558, val-loss: 0.05243212, cost-time: 1.2767 s
+2018-06-15 15:00:39,854 - tensorflow - INFO - Epoch 5: train-loss: 0.01446260, val-loss: 0.05121362, cost-time: 1.1629 s
+2018-06-15 15:00:40,914 - tensorflow - INFO - Epoch 6: train-loss: 0.01160476, val-loss: 0.05688658, cost-time: 1.0601 s
+2018-06-15 15:00:41,942 - tensorflow - INFO - Epoch 7: train-loss: 0.01050804, val-loss: 0.05748086, cost-time: 1.0277 s
+2018-06-15 15:00:42,961 - tensorflow - INFO - Epoch 8: train-loss: 0.01063884, val-loss: 0.05088400, cost-time: 1.0183 s
+2018-06-15 15:00:43,979 - tensorflow - INFO - Epoch 9: train-loss: 0.01268121, val-loss: 0.05188105, cost-time: 1.0183 s
+2018-06-15 15:00:45,085 - tensorflow - INFO - Epoch 10: train-loss: 0.01786415, val-loss: 0.05570937, cost-time: 1.1055 s

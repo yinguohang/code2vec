@@ -2,7 +2,6 @@
 import numpy as np
 import tensorflow as tf
 import pickle
-from log import Logger
 
 class Converter:
     def __init__(self):
@@ -46,7 +45,7 @@ class DataReader:
         self.path_converter = Converter()
         self.path_converter.load(input_file_name + "-path.txt")
         if not load:
-            Logger.print("Read from original files...")
+            tf.logging.info("Read from original files...")
             self.data_X = None
             self.data_y = None
             self.m = 0
@@ -64,7 +63,7 @@ class DataReader:
             with tf.gfile.Open(input_file_name + "-path-converter.pkl", "wb") as f:
                 pickle.dump(self.path_converter, f)
         else:
-            Logger.print("Read from cache...")
+            tf.logging.info("Read from cache...")
             with tf.gfile.Open(input_file_name + "-data-X.npy", "rb") as f:
                 self.data_X = np.load(f)
             with tf.gfile.Open(input_file_name + "-data-y.npy", "rb") as f:
@@ -87,7 +86,7 @@ class DataReader:
             # 删除掉两端的空白字符
             line = lines[i].strip()
             if int(i / total * 100) > int((i - 1) / total * 100):
-                Logger.print("%d \%" % int(i / total * 100))
+                tf.logging.info("%d \%" % int(i / total * 100))
             if line.startswith("method_name"):
                 # 如果上一个X为空，则直接丢弃
                 if X.shape[0] == 0:
@@ -115,7 +114,7 @@ class DataReader:
                 path = int(temp[1])
                 end = int(temp[2])
                 X = np.r_[X, np.array([[start, path, end]])]
-        Logger.print("Loaded %d lines." % total)
+        tf.logging.info("Loaded %d lines." % total)
         if X.shape[0] < context_bag_size:
             X = np.r_[X, np.zeros((context_bag_size - X.shape[0], 3))]
         data_X.append(X)
@@ -139,9 +138,9 @@ class DataReader:
         self.train_X, self.train_y = self.data_X[:int(self.m * 0.6), :, :], self.data_y[:int(self.m * 0.6)]
         self.dev_X, self.dev_y = self.data_X[int(self.m * 0.6):int(self.m * 0.8), :, :], self.data_y[int(self.m * 0.6):int(self.m * 0.8)]
         self.test_X, self.test_y = self.data_X[int(self.m * 0.8):, :, :], self.data_y[int(self.m * 0.8):]
-        Logger.print("Training set: %s" % str(self.train_X.shape))
-        Logger.print("Validation set: %s" % str(self.dev_X.shape))
-        Logger.print("Test set: %s" % str(self.test_X.shape))
+        tf.logging.info("Training set: %s" % str(self.train_X.shape))
+        tf.logging.info("Validation set: %s" % str(self.dev_X.shape))
+        tf.logging.info("Test set: %s" % str(self.test_X.shape))
         self.train_dataset = DataReader.np2tf(self.train_X, self.train_y).shuffle(buffer_size=60).batch(32)
         self.dev_dataset = DataReader.np2tf(self.dev_X, self.dev_y).shuffle(buffer_size=60).batch(32)
         self.test_dataset = DataReader.np2tf(self.test_X, self.test_y).shuffle(buffer_size=60).batch(32)
@@ -149,4 +148,4 @@ class DataReader:
 
 if __name__ == "__main__":
     reader = DataReader("temp.txt", 100)
-    Logger.print(reader.train_dataset)
+    tf.logging.info(reader.train_dataset)
