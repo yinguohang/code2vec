@@ -33,6 +33,7 @@ class Option:
         self.encode_size = FLAGS.FC1
         self.node_cnt = reader.node_converter.cnt + 1
         self.path_cnt = reader.path_converter.cnt + 1
+        self.dropout_rate = 0.01
 
 
 def train():
@@ -66,7 +67,7 @@ def train():
     with tf.Session(config=session_conf) as sess:
         sess.run(tf.global_variables_initializer())
         sess.run(train_init_op)
-        for i in range(10):
+        for i in range(20):
             start_time = time.time()
             sum_loss = 0
             cnt = 0
