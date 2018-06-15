@@ -12,6 +12,9 @@ import utils
 from data import DataReader
 from model import Code2VecModel
 
+tf.logging._logger.addHandler(utils.create_file_handler("tensorflow.log"))
+tf.logging._logger.setLevel(logging.DEBUG)
+
 data_path = {
     'PAI': 'oss://apsalgo-hz/force/codequailty/code2vec/data',
     'DARWIN': '/Users/jiangjunfang/Desktop/code2vec/data',
@@ -57,10 +60,6 @@ flags.DEFINE_string("optimizer", "adam", "Selected optimizer")
 
 
 flags.DEFINE_integer("FC1", 50, "FC1 size")
-
-
-tf.logging._logger.addHandler(utils.create_file_handler("tensorflow.log"))
-tf.logging._logger.setLevel(logging.DEBUG)
 
 
 class Option:
