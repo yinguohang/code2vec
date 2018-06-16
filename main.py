@@ -1,7 +1,6 @@
 # -*- coding:utf-8 -*-
 
 # 主程序入口
-import logging
 import os
 import time
 
@@ -12,12 +11,9 @@ import utils
 from data import DataReader
 from model import Code2VecModel
 
-tf.logging._logger.addHandler(utils.create_file_handler("tensorflow.log"))
-tf.logging._logger.setLevel(logging.DEBUG)
-
-data_path = {
-    'PAI': 'oss://apsalgo-hz/force/codequailty/code2vec/data',
-    'DARWIN': '/Users/jiangjunfang/Desktop/code2vec/data',
+base_path = {
+    'PAI': 'oss://apsalgo-hz/force/codequailty/code2vec',
+    'DARWIN': '/Users/jiangjunfang/Desktop/code2vec',
     'WINDOWS': ''
 }
 
@@ -32,9 +28,17 @@ flags.DEFINE_string("os_type",
                     default_value=utils.detect_platform(),
                     docstring="Current OS platform (PAI/WINDOWS/DARWIN)")
 
+flags.DEFINE_string("base_path",
+                    default_value=base_path[utils.detect_platform()],
+                    docstring="Absolute path of base directory on current platform")
+
 flags.DEFINE_string("data_path",
-                    default_value=data_path[utils.detect_platform()],
-                    docstring="Absolute path of data directory on current platform")
+                    default_value=os.path.join(base_path[utils.detect_platform()], 'data'),
+                    docstring="Absolute path of data directory")
+
+flags.DEFINE_string("log_path",
+                    default_value=os.path.join(base_path[utils.detect_platform()], 'log'),
+                    docstring="Absolute path of log directory")
 
 flags.DEFINE_integer("context_bag_size",
                      default_value=100,
@@ -48,6 +52,14 @@ flags.DEFINE_integer("path_embedding_size",
                      default_value=50,
                      docstring="Path embedding size")
 
+flags.DEFINE_string("optimizer",
+                    default_value="adam",
+                    docstring="Selected optimizer")
+
+flags.DEFINE_integer("FC1",
+                     default_value=50,
+                     docstring="FC1 size")
+
 flags.DEFINE_boolean("allow_soft_placement",
                      default_value=True,
                      docstring="Allow device soft device placement")
@@ -56,10 +68,7 @@ flags.DEFINE_boolean("log_device_placement",
                      default_value=False,
                      docstring="Log placement of ops on devices")
 
-flags.DEFINE_string("optimizer", "adam", "Selected optimizer")
-
-
-flags.DEFINE_integer("FC1", 50, "FC1 size")
+utils.init_tf_logging(FLAGS.log_path)
 
 
 class Option:
@@ -110,14 +119,16 @@ def train():
             sess.run(train_init_op)
             while True:
                 try:
-                    _, loss_value, data = sess.run([train_op, train_model.loss, batch_datas])
+                    _, loss_value, data, mask = sess.run([train_op, train_model.loss, batch_datas, train_model.mask])
                     sum_loss = sum_loss + loss_value * len(data["score"])
                     cnt = cnt + len(data["score"])
                 except tf.errors.OutOfRangeError:
                     break
+            # print(tf.nn.embedding_lookup(train_model.node_embedding, 0).eval())
+            # print(mask)
             eval_loss = eval(sess, eval_model, batch_datas, eval_init_op)
-            tf.logging.info('Epoch %d: train-loss: %.8f, val-loss: %.8f, cost-time: %.4f s' %(
-                i + 1, sum_loss / cnt, eval_loss, time.time() - start_time))
+            tf.logging.info('Epoch %d: train-loss: %.8f, val-loss: %.8f, cost-time: %.4f s'
+                            %(i + 1, sum_loss / cnt, eval_loss, time.time() - start_time))
 
 
 def eval(sess, model, batch_datas, test_init_op):

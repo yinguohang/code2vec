@@ -1,7 +1,9 @@
-#-*- coding:utf-8 -*-
+# -*- coding:utf-8 -*-
+import pickle
+
 import numpy as np
 import tensorflow as tf
-import pickle
+
 
 class Converter:
     def __init__(self):
@@ -136,7 +138,9 @@ class DataReader:
 
     def generate_dataset(self):
         self.train_X, self.train_y = self.data_X[:int(self.m * 0.6), :, :], self.data_y[:int(self.m * 0.6)]
-        self.dev_X, self.dev_y = self.data_X[int(self.m * 0.6):int(self.m * 0.8), :, :], self.data_y[int(self.m * 0.6):int(self.m * 0.8)]
+        self.dev_X, self.dev_y = self.data_X[int(self.m * 0.6):int(self.m * 0.8), :, :], self.data_y[
+                                                                                         int(self.m * 0.6):int(
+                                                                                             self.m * 0.8)]
         self.test_X, self.test_y = self.data_X[int(self.m * 0.8):, :, :], self.data_y[int(self.m * 0.8):]
         tf.logging.info("Training set: %s" % str(self.train_X.shape))
         tf.logging.info("Validation set: %s" % str(self.dev_X.shape))

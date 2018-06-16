@@ -17,9 +17,10 @@ class Code2VecModel:
             if opt.training:
                 tf.summary.histogram('node_embedding', self.node_embedding)
                 tf.summary.histogram("path_embedding", self.path_embedding)
+            self.mask = tf.logical_not(tf.equal(start, 0))
             inputs = self.build_input(start, path, end)
             encode_inputs = self.build_encode_input(inputs, opt)
-            attention_outputs = self.build_attention(encode_inputs, opt)
+            attention_outputs = self.build_attention(encode_inputs, self.mask, opt)
             self.loss, self.outputs = self.build_regression(attention_outputs, score)
             if opt.training:
                 tf.summary.scalar('loss', self.loss)
@@ -48,17 +49,14 @@ class Code2VecModel:
             tf.logging.info('encode_inputs: %s' % encode_inputs)
             return encode_inputs
 
-    def build_attention(self, inputs, opt):
+    def build_attention(self, inputs, mask, opt):
         with tf.name_scope("attention"):
+            batch_size = inputs.get_shape()[0]
             bag_size = inputs.get_shape()[1]
             encode_size = inputs.get_shape()[2]
-            # attention_weights = tf.get_variable("attention_weights",
-            #                                     [encode_size, 1],
-            #                                     initializer=tf.contrib.layers.xavier_initializer(),
-            #                                     dtype=tf.float32)
-            # context_weights = tf.matmul(inputs, attention_weights)
             context_weights = tf.contrib.layers.fully_connected(inputs, 1, activation_fn=None)
-            context_weights_softmax = tf.nn.softmax(context_weights, 1)
+            context_weights_masked = tf.where(tf.reshape(mask, [-1, bag_size, 1]), context_weights, tf.multiply(tf.ones_like(context_weights), -3.4e38))
+            context_weights_softmax = tf.nn.softmax(context_weights_masked, 1)
             context_weights_repeat = tf.tile(context_weights_softmax, [1, 1, encode_size])
             context_mul = tf.multiply(inputs, context_weights_repeat)
             context_sum = tf.reduce_sum(context_mul, 1)
