@@ -7,7 +7,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-import utils
+from utils import utils
 from data import DataReader
 from model import Code2VecModel
 
@@ -20,17 +20,7 @@ base_path = {
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string("data_set",
-                    default_value="paths-1000",
-                    docstring='Name of the data set to be used')
-
-flags.DEFINE_string("os_type",
-                    default_value=utils.detect_platform(),
-                    docstring="Current OS platform (PAI/WINDOWS/DARWIN)")
-
-flags.DEFINE_string("base_path",
-                    default_value=base_path[utils.detect_platform()],
-                    docstring="Absolute path of base directory on current platform")
+flags.DEFINE_string("data_set", "paths-1000", "Name of the data set to be used")
 
 flags.DEFINE_string("data_path",
                     default_value=os.path.join(base_path[utils.detect_platform()], 'data'),
@@ -86,9 +76,12 @@ def train():
     reader = DataReader(os.path.join(FLAGS.data_path, FLAGS.data_set), FLAGS.context_bag_size)
     train_dataset = reader.train_dataset
     dev_dataset = reader.dev_dataset
+
     iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
     train_init_op = iterator.make_initializer(train_dataset)
+
     eval_init_op = iterator.make_initializer(dev_dataset)
+
     batch_datas = iterator.get_next()
     start = batch_datas['start']
     path = batch_datas['path']

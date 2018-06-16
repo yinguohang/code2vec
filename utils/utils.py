@@ -27,6 +27,10 @@ def detect_platform():
 
 
 def init_tf_logging(log_path):
+    """
+    Redirect tf.logging to stdout and also a separate log file
+    :param log_path: Base directory for log files
+    """
     # Create log formatter
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -49,10 +53,12 @@ def init_tf_logging(log_path):
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(formatter)
 
-    # Create stream handler
     ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging.DEBUG)
     ch.setFormatter(formatter)
 
+    # Init logging
+    tf.logging._logger.removeHandler(tf.logging._handler)
     tf.logging._logger.addHandler(ch)
     tf.logging._logger.addHandler(fh)
+    tf.logging._logger.setLevel(logging.DEBUG)
