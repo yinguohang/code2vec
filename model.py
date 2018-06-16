@@ -21,7 +21,7 @@ class Code2VecModel:
             inputs = self.build_input(start, path, end)
             encode_inputs = self.build_encode_input(inputs, opt)
             attention_outputs = self.build_attention(encode_inputs, self.mask, opt)
-            self.loss, self.outputs = self.build_regression(attention_outputs, score)
+            self.loss, self.outputs = self.build_regression(attention_outputs, score, opt)
             if opt.training:
                 tf.summary.scalar('loss', self.loss)
 
@@ -44,7 +44,8 @@ class Code2VecModel:
                                              initializer=tf.contrib.layers.xavier_initializer(),
                                              dtype=tf.float32)
             flatten_input = tf.reshape(inputs, [-1, context_size])
-            flatten_encode_inputs = tf.nn.tanh(tf.matmul(flatten_input, encode_weights))
+            encode_dropout = tf.layers.dropout(flatten_input, opt.dropout_rate)
+            flatten_encode_inputs = tf.nn.tanh(tf.matmul(encode_dropout, encode_weights))
             encode_inputs = tf.reshape(flatten_encode_inputs, [-1, bag_size, opt.encode_size])
             tf.logging.info('encode_inputs: %s' % encode_inputs)
             return encode_inputs
@@ -63,13 +64,14 @@ class Code2VecModel:
             tf.logging.info("attention: %s" % context_sum)
             return context_sum
 
-    def build_regression(self, inputs, score):
+    def build_regression(self, inputs, score, opt):
         with tf.name_scope("regression"):
             bag_size = inputs.get_shape()[1]
             output_weights = tf.get_variable("output_weights",
                                              [bag_size, 1],
                                              initializer=tf.contrib.layers.xavier_initializer(),
                                              dtype=tf.float32)
+            regression = tf.layers.dropout(inputs, opt.dropout_rate)
             outputs = tf.matmul(inputs, output_weights)
             loss = tf.losses.mean_squared_error(score, tf.reshape(outputs, [-1]))
             tf.logging.info("outputs: %s" % outputs)
