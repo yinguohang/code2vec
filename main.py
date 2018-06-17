@@ -7,57 +7,14 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from utils import utils
 from data import DataReader
 from model import Code2VecModel
+from utils import config
+from utils import utils
 
-base_path = {
-    'PAI': 'oss://apsalgo-hz/force/codequailty/code2vec',
-    'DARWIN': '/Users/jiangjunfang/Desktop/code2vec',
-    'WINDOWS': ''
-}
+FLAGS = tf.app.flags.FLAGS
 
-flags = tf.app.flags
-FLAGS = flags.FLAGS
-
-flags.DEFINE_string("data_set", "paths-1000", "Name of the data set to be used")
-
-flags.DEFINE_string("data_path",
-                    default_value=os.path.join(base_path[utils.detect_platform()], 'data'),
-                    docstring="Absolute path of data directory")
-
-flags.DEFINE_string("log_path",
-                    default_value=os.path.join(base_path[utils.detect_platform()], 'log'),
-                    docstring="Absolute path of log directory")
-
-flags.DEFINE_integer("context_bag_size",
-                     default_value=100,
-                     docstring="The number of context paths in AST to be used in training")
-
-flags.DEFINE_integer("node_embedding_size",
-                     default_value=50,
-                     docstring="Node (start and end) embedding size")
-
-flags.DEFINE_integer("path_embedding_size",
-                     default_value=50,
-                     docstring="Path embedding size")
-
-flags.DEFINE_string("optimizer",
-                    default_value="adam",
-                    docstring="Selected optimizer")
-
-flags.DEFINE_integer("FC1",
-                     default_value=50,
-                     docstring="FC1 size")
-
-flags.DEFINE_boolean("allow_soft_placement",
-                     default_value=True,
-                     docstring="Allow device soft device placement")
-
-flags.DEFINE_boolean("log_device_placement",
-                     default_value=False,
-                     docstring="Log placement of ops on devices")
-
+config.init()
 utils.init_tf_logging(FLAGS.log_path)
 
 

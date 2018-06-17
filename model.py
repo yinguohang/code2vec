@@ -17,6 +17,7 @@ class Code2VecModel:
             if opt.training:
                 tf.summary.histogram('node_embedding', self.node_embedding)
                 tf.summary.histogram("path_embedding", self.path_embedding)
+
             self.mask = tf.logical_not(tf.equal(start, 0))
             inputs = self.build_input(start, path, end)
             encode_inputs = self.build_encode_input(inputs, opt)
