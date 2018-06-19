@@ -19,41 +19,40 @@ utils.init_tf_logging(FLAGS.log_path)
 
 
 class Option:
-    def __init__(self, reader):
-        self.training = True
+    def __init__(self, reader, training=True):
+        self.training = training
         self.node_embedding_size = FLAGS.node_embedding_size
         self.path_embedding_size = FLAGS.path_embedding_size
         self.encode_size = FLAGS.FC1
         self.node_cnt = reader.node_converter.cnt + 1
         self.path_cnt = reader.path_converter.cnt + 1
-        self.dropout_rate = 0.01
+        self.dropout_rate = 0.5
 
 
 def train():
     reader = DataReader(os.path.join(FLAGS.data_path, FLAGS.data_set), FLAGS.context_bag_size)
-    train_dataset = reader.train_dataset
-    dev_dataset = reader.dev_dataset
 
-    iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
-    train_init_op = iterator.make_initializer(train_dataset)
+    train_data = reader.train_dataset
+    eval_data = reader.dev_dataset
 
-    eval_init_op = iterator.make_initializer(dev_dataset)
+    iterator = tf.data.Iterator.from_structure(train_data.output_types, train_data.output_shapes)
 
-    batch_datas = iterator.get_next()
-    start = batch_datas['start']
-    path = batch_datas['path']
-    end = batch_datas['end']
-    score = batch_datas['score']
+    batch_data = iterator.get_next()
+    start = batch_data['start']
+    path = batch_data['path']
+    end = batch_data['end']
+    score = batch_data['score']
+
+    train_init_op = iterator.make_initializer(train_data)
+    eval_init_op = iterator.make_initializer(eval_data)
 
     with tf.variable_scope("model"):
         opt = Option(reader)
-        lr = tf.placeholder(dtype=tf.float32, name='lr')
         train_model = Code2VecModel(start, path, end, score, opt)
         train_op = utils.get_optimizer(FLAGS.optimizer).minimize(train_model.loss)
 
     with tf.variable_scope('model', reuse=True):
-        eval_opt = Option(reader)
-        eval_opt.training = False
+        eval_opt = Option(reader, training=False)
         eval_model = Code2VecModel(start, path, end, score, eval_opt)
 
     session_conf = tf.ConfigProto(
@@ -62,39 +61,31 @@ def train():
 
     with tf.Session(config=session_conf) as sess:
         sess.run(tf.global_variables_initializer())
-        sess.run(train_init_op)
         for i in range(20):
             start_time = time.time()
-            sum_loss = 0
-            cnt = 0
-            sess.run(train_init_op)
-            while True:
-                try:
-                    _, loss_value, data, mask = sess.run([train_op, train_model.loss, batch_datas, train_model.mask])
-                    sum_loss = sum_loss + loss_value * len(data["score"])
-                    cnt = cnt + len(data["score"])
-                except tf.errors.OutOfRangeError:
-                    break
-            # print(tf.nn.embedding_lookup(train_model.node_embedding, 0).eval())
-            # print(mask)
-            eval_loss = eval(sess, eval_model, batch_datas, eval_init_op)
+
+            train_loss = evaluate(sess, train_model, batch_data, train_init_op, train_op)
+            eval_loss = evaluate(sess, eval_model, batch_data, eval_init_op)
+
             tf.logging.info('Epoch %d: train-loss: %.8f, val-loss: %.8f, cost-time: %.4f s'
-                            %(i + 1, sum_loss / cnt, eval_loss, time.time() - start_time))
+                            % (i + 1, train_loss, eval_loss, time.time() - start_time))
 
 
-def eval(sess, model, batch_datas, test_init_op):
-    scores = batch_datas['score']
-    sess.run(test_init_op)
-    sum_loss = 0
-    cnt = 0
+def evaluate(sess, model, batch_data, batch_init_op, op=None):
+    sess.run(batch_init_op)
+    batch_loss = []
+
     while True:
         try:
-            scores_rlt, loss_value = sess.run([scores, model.loss])
-            sum_loss = loss_value * len(scores_rlt) + sum_loss
-            cnt = cnt + len(scores_rlt)
+            if op is not None:
+                _, loss_value, data, mask = sess.run([op, model.loss, batch_data, model.mask])
+            else:
+                loss_value, data, mask = sess.run([model.loss, batch_data, model.mask])
+
+            batch_loss.append((loss_value, len(data['score'])))
         except tf.errors.OutOfRangeError:
             break
-    return sum_loss / cnt
+    return sum(l * n for l, n in batch_loss) / sum(n for _, n in batch_loss)
 
 
 def main(_):
