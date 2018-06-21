@@ -28,7 +28,7 @@ class Code2VecModel:
                 self.acc = tf.zeros(1)
 
             if opt.training:
-                self.loss += tf.add_n(self.regularizations.values())
+                self.loss += tf.add_n(list(self.regularizations.values()))
 
 
 
