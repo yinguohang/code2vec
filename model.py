@@ -19,18 +19,18 @@ class Code2VecModel:
             regression_outputs = self.build_regression_layer(attention_outputs, opt)
 
             if opt.classification > 0:
-                self.loss = tf.losses.softmax_cross_entropy(self.regression_to_classification(score, opt.classification),
-                                                            tf.reshape(regression_outputs, [-1, opt.classification]))
-                self.acc = tf.metrics.accuracy(labels=tf.argmax(self.regression_to_classification(score, opt.classification), 1),
-                                               predictions=tf.argmax(tf.reshape(regression_outputs, [-1, opt.classification]), 1))
+                self.loss = tf.losses.softmax_cross_entropy(
+                    self.regression_to_classification(score, opt.classification),
+                    tf.reshape(regression_outputs, [-1, opt.classification]))
+                self.acc = tf.metrics.accuracy(
+                    labels=tf.argmax(self.regression_to_classification(score, opt.classification), 1),
+                    predictions=tf.argmax(tf.reshape(regression_outputs, [-1, opt.classification]), 1))
             else:
                 self.loss = tf.losses.mean_squared_error(score, tf.reshape(regression_outputs, [-1]))
                 self.acc = tf.zeros(1)
 
-            if opt.training:
-                self.loss += tf.add_n(self.regularizations.values())
-
-
+            # if opt.training:
+            #     self.loss += tf.add_n(self.regularizations.values())
 
     def regression_to_classification(self, inputs, category_cnt):
         return tf.one_hot(tf.cast(tf.floor(inputs * category_cnt), dtype=tf.int32), category_cnt)
