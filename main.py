@@ -29,7 +29,7 @@ class Option:
         self.node_cnt = reader.node_converter.cnt + 1
         self.path_cnt = reader.path_converter.cnt + 1
         self.dropout_rate = 0.5
-        self.classification = -1
+        self.classification = 2
 
 
 def train():
