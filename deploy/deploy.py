@@ -2,18 +2,24 @@ import argparse
 import os
 import signal
 import subprocess
+import sys
 import threading
 import time
+
+from utils import *
 
 try:
     from urllib.parse import urlparse, parse_qs
 except ImportError:
     from urlparse import urlparse, parse_qs
 
-from utils import *
-
 # Path to store code.tar.gz
 tar_ball_location = os.path.join(os.path.dirname(os.path.abspath(__file__)), "code.tar.gz")
+tar_ball_location_pai = tar_ball_location
+
+if detect_platform() == "WINDOWS":
+    tar_ball_location_pai = tar_ball_location.replace("\\", "\\\\")
+    tar_ball_location = "/" + tar_ball_location.replace("\\", "/").replace(":", "")
 
 # Main entry file of the code
 main_entry_file = "main.py"
@@ -22,7 +28,7 @@ main_entry_file = "main.py"
 pai_commands = [
     "use kelude_open_dw;",
     "pai -name tensorflow140"
-    + " -Dscript='file://{}'".format(tar_ball_location)
+    + " -Dscript='file://{}'".format(tar_ball_location_pai)
     + " -DentryFile='{}'".format(main_entry_file)
     + " -DcheckpointDir='oss://apsalgo-hz/?role_arn=acs:ram::1396633922344963:role/aps-odps-algo&host=cn-hangzhou.oss-internal.aliyun-inc.com'"
     + " -Dbuckets='oss://apsalgo-hz/?role_arn=acs:ram::1396633922344963:role/aps-odps-algo&host=cn-hangzhou.oss-internal.aliyun-inc.com';"
@@ -68,7 +74,7 @@ print("Preparing tar ball...")
 tar_process = subprocess.Popen(["bash", "-c",
                                 "cd `git rev-parse --show-toplevel`;"
                                 + "git ls-tree --full-tree -r --name-only HEAD | "
-                                + "tar -czvf " + tar_ball_location + " -T -"],
+                                + "tar -czvf \"" + tar_ball_location + "\" -T -"],
                                stdout=subprocess.PIPE)
 stdout_data, stderr_data = tar_process.communicate()
 tar_process.wait()

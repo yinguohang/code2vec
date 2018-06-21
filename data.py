@@ -38,7 +38,7 @@ class Converter:
 
 class DataReader:
     def __init__(self, input_file_name, context_bag_size):
-        if tf.gfile.Exists(input_file_name + "-data-X.npy"):
+        if tf.gfile.Exists(input_file_name + "-" + str(context_bag_size) + "-data-X.npy"):
             load = True
         else:
             load = False
@@ -56,19 +56,19 @@ class DataReader:
             # self.path_converter = Converter()
             # self.path_converter.load(input_file_name + "-path.txt")
             self.read_corpus(input_file_name, context_bag_size)
-            with tf.gfile.Open(input_file_name + "-data-X.npy", "wb") as f:
+            with tf.gfile.Open(input_file_name + "-" + str(context_bag_size) + "-data-X.npy", "wb") as f:
                 np.save(f, self.data_X)
-            with tf.gfile.Open(input_file_name + "-data-y.npy", "wb") as f:
+            with tf.gfile.Open(input_file_name + "-" + str(context_bag_size) + "-data-y.npy", "wb") as f:
                 np.save(f, self.data_y)
-            with tf.gfile.Open(input_file_name + "-node-converter.pkl", "wb") as f:
-                pickle.dump(self.node_converter, f)
-            with tf.gfile.Open(input_file_name + "-path-converter.pkl", "wb") as f:
-                pickle.dump(self.path_converter, f)
+            # with tf.gfile.Open(input_file_name + "-node-converter.pkl", "wb") as f:
+            #     pickle.dump(self.node_converter, f)
+            # with tf.gfile.Open(input_file_name + "-path-converter.pkl", "wb") as f:
+            #     pickle.dump(self.path_converter, f)
         else:
             tf.logging.info("Read from cache...")
-            with tf.gfile.Open(input_file_name + "-data-X.npy", "rb") as f:
+            with tf.gfile.Open(input_file_name + "-" + str(context_bag_size) + "-data-X.npy", "rb") as f:
                 self.data_X = np.load(f)
-            with tf.gfile.Open(input_file_name + "-data-y.npy", "rb") as f:
+            with tf.gfile.Open(input_file_name + "-" + str(context_bag_size) + "-data-y.npy", "rb") as f:
                 self.data_y = np.load(f)
             # with tf.gfile.Open(input_file_name + "-node-converter.pkl", "rb") as f:
             #     self.node_converter = pickle.load(f)
@@ -78,7 +78,7 @@ class DataReader:
         self.generate_dataset()
 
     def read_corpus(self, input_file_name, context_bag_size):
-        f = tf.gfile.Open(input_file_name + "-context.txt", encoding="utf-8")
+        f = tf.gfile.Open(input_file_name + "-context.txt")
         data_X = []
         data_y = []
         X = np.zeros((0, 3))
@@ -88,16 +88,19 @@ class DataReader:
             # 删除掉两端的空白字符
             line = lines[i].strip()
             if int(i / total * 100) > int((i - 1) / total * 100):
-                tf.logging.info("%d \%" % int(i / total * 100))
-            if line.startswith("method_name"):
+                tf.logging.info("%d percent" % int(i / total * 100))
+            if line.startswith("method_name") or line.startswith("class_name"):
                 # 如果上一个X为空，则直接丢弃
                 if X.shape[0] == 0:
+                    if len(data_y) > 0:
+                        data_y.pop()
                     continue
                 # 如果长度不够，则使用0来padding
                 if X.shape[0] < context_bag_size:
                     X = np.r_[X, np.zeros((context_bag_size - X.shape[0], 3))]
                 data_X.append(X)
                 X = np.zeros((0, 3))
+                pass
             elif line.startswith("score:"):
                 original_score = float(line.split(":")[1])
                 if original_score == 0:
@@ -123,6 +126,8 @@ class DataReader:
         self.data_X = np.array(data_X)
         self.data_y = np.array(data_y)
         self.m = self.data_y.shape[0]
+        print(self.data_X.shape)
+        print(self.data_y.shape)
         random_index = np.random.permutation(self.m)
         self.data_X = self.data_X[random_index]
         self.data_y = self.data_y[random_index]

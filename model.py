@@ -33,7 +33,7 @@ class Code2VecModel:
                 self.acc = tf.zeros(1)
 
             if opt.training:
-                self.loss += tf.add_n(self.regularizations.values())
+                self.loss += tf.add_n(list(self.regularizations.values()))
 
     def regression_to_classification(self, inputs, category_cnt):
         return tf.one_hot(tf.cast(tf.floor(inputs * category_cnt), dtype=tf.int32), category_cnt)

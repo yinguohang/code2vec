@@ -6,13 +6,13 @@ from . import utils
 base_path = {
     'PAI': 'oss://apsalgo-hz/force/codequailty/code2vec',
     'DARWIN': '/Users/jiangjunfang/Desktop/code2vec',
-    'WINDOWS': ''
+    'WINDOWS': 'D:\\ml\\code2vec_tf'
 }
 
 data_set = {
     'PAI': 'paths-18728',
     'DARWIN': 'paths-1000',
-    'WINDOWS': 'paths-1000'
+    'WINDOWS': 'paths-18728'
 }
 
 
@@ -27,7 +27,7 @@ def init():
     flags.DEFINE_string("log_path", os.path.join(base_path[utils.detect_platform()], 'log'),
                         "Absolute path of log directory")
 
-    flags.DEFINE_integer("context_bag_size", 100, "The number of context paths in AST to be used in training")
+    flags.DEFINE_integer("context_bag_size", 600, "The number of context paths in AST to be used in training")
 
     flags.DEFINE_integer("node_embedding_size", 50, "Node (start and end) embedding size")
 

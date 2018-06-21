@@ -1,7 +1,20 @@
 import json
-import sys
+import platform
 
 import requests
+import tensorflow as tf
+from tensorflow.python.framework.errors_impl import UnimplementedError, NotFoundError
+
+
+def detect_platform():
+    is_pai = True
+    try:
+        tf.gfile.GFile("oss://file_not_existed", "r").read()
+    except UnimplementedError:
+        is_pai = False
+    except NotFoundError:
+        pass
+    return 'PAI' if is_pai else platform.system().upper()
 
 
 def forward_fd(process_fd, sys_fd, handler=None, stop=lambda: False):
