@@ -4,6 +4,8 @@
 import os
 import time
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 import numpy as np
 import tensorflow as tf
 
@@ -23,10 +25,11 @@ class Option:
         self.training = training
         self.node_embedding_size = FLAGS.node_embedding_size
         self.path_embedding_size = FLAGS.path_embedding_size
-        self.encode_size = FLAGS.FC1
+        self.encode_size = FLAGS.encode_size
         self.node_cnt = reader.node_converter.cnt + 1
         self.path_cnt = reader.path_converter.cnt + 1
         self.dropout_rate = 0.5
+        self.classification = 2
 
 
 def train():
@@ -46,12 +49,12 @@ def train():
     train_init_op = iterator.make_initializer(train_data)
     eval_init_op = iterator.make_initializer(eval_data)
 
-    with tf.variable_scope("model"):
+    with tf.variable_scope("code2vec_model"):
         opt = Option(reader)
         train_model = Code2VecModel(start, path, end, score, opt)
         train_op = utils.get_optimizer(FLAGS.optimizer).minimize(train_model.loss)
 
-    with tf.variable_scope('model', reuse=True):
+    with tf.variable_scope('code2vec_model', reuse=True):
         eval_opt = Option(reader, training=False)
         eval_model = Code2VecModel(start, path, end, score, eval_opt)
 
@@ -61,31 +64,36 @@ def train():
 
     with tf.Session(config=session_conf) as sess:
         sess.run(tf.global_variables_initializer())
+        sess.run(tf.local_variables_initializer())
         for i in range(20):
             start_time = time.time()
 
-            train_loss = evaluate(sess, train_model, batch_data, train_init_op, train_op)
-            eval_loss = evaluate(sess, eval_model, batch_data, eval_init_op)
+            train_loss, train_acc = evaluate(sess, train_model, batch_data, train_init_op, train_op)
+            eval_loss, eval_acc = evaluate(sess, eval_model, batch_data, eval_init_op)
 
-            tf.logging.info('Epoch %d: train-loss: %.8f, val-loss: %.8f, cost-time: %.4f s'
-                            % (i + 1, train_loss, eval_loss, time.time() - start_time))
+            tf.logging.info('Epoch %d: train-loss: %.8f (acc=%.2f), val-loss: %.8f (acc=%.2f), cost-time: %.4f s'
+                            % (i + 1, train_loss, train_acc, eval_loss, eval_acc, time.time() - start_time))
 
 
 def evaluate(sess, model, batch_data, batch_init_op, op=None):
     sess.run(batch_init_op)
-    batch_loss = []
+    batch_loss_lst = []
+    batch_acc_lst = []
 
     while True:
         try:
             if op is not None:
-                _, loss_value, data, mask = sess.run([op, model.loss, batch_data, model.mask])
+                _, loss_value, data, acc = sess.run([op, model.loss, batch_data, model.acc])
             else:
-                loss_value, data, mask = sess.run([model.loss, batch_data, model.mask])
-
-            batch_loss.append((loss_value, len(data['score'])))
+                loss_value, data, acc = sess.run([model.loss, batch_data, model.acc])
+            batch_acc_lst.append((acc[0], len(data['score'])))
+            batch_loss_lst.append((loss_value, len(data['score'])))
         except tf.errors.OutOfRangeError:
             break
-    return sum(l * n for l, n in batch_loss) / sum(n for _, n in batch_loss)
+
+    loss = sum(l * n for l, n in batch_loss_lst) / sum(n for _, n in batch_loss_lst)
+    acc = sum(l * n for l, n in batch_acc_lst) / sum(n for _, n in batch_acc_lst)
+    return loss, acc
 
 
 def main(_):

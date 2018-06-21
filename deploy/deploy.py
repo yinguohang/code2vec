@@ -45,7 +45,7 @@ A script that helps you to automatically upload PAI tasks.
 * You may use optional flag --suppress_stderr to hide messages from stderr.
 
 """, formatter_class=argparse.RawTextHelpFormatter)
-parser.add_argument('path_to_odpscmd', help='Path to odps console')
+parser.add_argument('odps_path', help='Path to odps console')
 parser.add_argument('--suppress_stderr', action='store_true')
 args = parser.parse_args()
 
