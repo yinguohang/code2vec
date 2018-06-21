@@ -1,8 +1,10 @@
 import argparse
 import os
+import signal
 import subprocess
 import threading
 import time
+
 try:
     from urllib.parse import urlparse, parse_qs
 except ImportError:
@@ -56,7 +58,7 @@ odps_path = args.odps_path
 suppress_stderr = args.suppress_stderr
 
 # Job url returned from odps
-job_url = None
+job_url, job_id, token = None, None, None
 
 ###################################
 #  Creating code.tar.gz
@@ -78,11 +80,11 @@ print("The tar ball is stored at " + tar_ball_location + "\n")
 ###################################
 print("Now launching odps...")
 
-process = subprocess.Popen([odps_path],
-                           shell=False, bufsize=0,
-                           stdin=subprocess.PIPE,
-                           stdout=subprocess.PIPE,
-                           stderr=subprocess.PIPE)
+odps_process = subprocess.Popen([odps_path],
+                                shell=False, bufsize=0,
+                                stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
 
 
 def output_handler(buf):
@@ -92,23 +94,24 @@ def output_handler(buf):
         del buf[:]
         if out.startswith("http://logview.odps.aliyun-inc.com:8080"):
             job_url = out
-            process.terminate()
+            odps_process.send_signal(signal.SIGINT)
     if out.startswith('odps@') and out.endswith('>'):
         del buf[:]
         if len(pai_commands) > 0:
-            process.stdin.write((pai_commands[0] + "\n").encode())
+            odps_process.stdin.write((pai_commands[0] + "\n").encode())
             pai_commands.pop(0)
-            process.stdin.flush()
-        else:
-            process.terminate()
+            odps_process.stdin.flush()
 
 
 threading.Thread(target=forward_fd,
-                 args=(process.stderr, sys.stdout, output_handler, lambda: job_url is not None)).start()
+                 args=(odps_process.stderr, sys.stdout, output_handler, lambda: job_url is not None)).start()
 threading.Thread(target=forward_fd,
-                 args=(process.stdout, sys.stdout, output_handler, lambda: job_url is not None)).start()
+                 args=(odps_process.stdout, sys.stdout, output_handler, lambda: job_url is not None)).start()
 
-process.wait()
+while job_url is None:
+    time.sleep(0.5)
+
+odps_process.terminate()
 
 print("Pai job launched. Retrieving job information...\n")
 
@@ -157,7 +160,9 @@ print("Task is now running. Connecting to remote console...\n")
 
 stdout = ""
 stderr = ""
-while True:
+status = "Running"
+while status == "Running":
+    status = retrieve_odps_status(job_id, token)['status']
     stdout, new_stdout = combine_overlap_string(stdout, retrieve_odps_log(job_id, token, log_id, log_type="Stdout"))
     sys.stdout.write(new_stdout)
     sys.stdout.flush()
@@ -166,3 +171,5 @@ while True:
         sys.stderr.write('\x1b[1;31m' + new_stderr + '\x1b[0m')
         sys.stderr.flush()
     time.sleep(1)
+
+print("\nFinished")

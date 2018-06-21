@@ -1,6 +1,7 @@
 # -*-coding:utf-8-*-
 
 import tensorflow as tf
+from tensorflow.python.ops.losses.losses_impl import Reduction
 
 
 class Code2VecModel:
@@ -19,9 +20,11 @@ class Code2VecModel:
             regression_outputs = self.build_regression_layer(attention_outputs, opt)
 
             if opt.classification > 0:
-                self.loss = tf.losses.softmax_cross_entropy(
+
+                self.loss = tf.losses.sigmoid_cross_entropy(
                     self.regression_to_classification(score, opt.classification),
-                    tf.reshape(regression_outputs, [-1, opt.classification]))
+                    tf.reshape(regression_outputs, [-1, opt.classification]),
+                    reduction=Reduction.MEAN)
                 self.acc = tf.metrics.accuracy(
                     labels=tf.argmax(self.regression_to_classification(score, opt.classification), 1),
                     predictions=tf.argmax(tf.reshape(regression_outputs, [-1, opt.classification]), 1))
@@ -29,8 +32,8 @@ class Code2VecModel:
                 self.loss = tf.losses.mean_squared_error(score, tf.reshape(regression_outputs, [-1]))
                 self.acc = tf.zeros(1)
 
-            # if opt.training:
-            #     self.loss += tf.add_n(self.regularizations.values())
+            if opt.training:
+                self.loss += tf.add_n(self.regularizations.values())
 
     def regression_to_classification(self, inputs, category_cnt):
         return tf.one_hot(tf.cast(tf.floor(inputs * category_cnt), dtype=tf.int32), category_cnt)
@@ -78,6 +81,8 @@ class Code2VecModel:
 
             outputs_flatten = tf.nn.tanh(tf.matmul(inputs_dropout, encoding_fc_weight))
 
+            self.regularizations['encoding_fc_weight_L2'] = tf.norm(encoding_fc_weight, ord=2) * 0.3
+
             outputs = tf.reshape(outputs_flatten, [-1, bag_size, opt.encode_size])
 
             if opt.training:
@@ -89,7 +94,7 @@ class Code2VecModel:
     def build_attention_layer(self, inputs, mask, opt):
         with tf.variable_scope("attention"):
             bag_size = inputs.get_shape()[1]
-            attention_dimension = 10
+            attention_dimension = 5
 
             inputs_flatten = tf.reshape(inputs, [-1, opt.encode_size])
             inputs_dropout = tf.layers.dropout(inputs_flatten,
@@ -108,6 +113,7 @@ class Code2VecModel:
 
             context_weights_flatten = tf.matmul(inputs_dropout, tf.transpose(attention_weight))
             context_weights_flatten = tf.matmul(tf.nn.tanh(context_weights_flatten), attention_value)
+
             context_weights = tf.reshape(context_weights_flatten, [-1, bag_size, 1])
 
             context_weights_masked = tf.where(tf.reshape(mask, [-1, bag_size, 1]), context_weights,
@@ -124,7 +130,8 @@ class Code2VecModel:
             # Encourage weights to be orthogonal
             orthogonal_penalty = tf.square(tf.norm(tf.matmul(attention_weight, tf.transpose(attention_weight))
                                                    - tf.eye(attention_dimension), ord='fro', axis=(0, 1)))
-            self.regularizations['attention_orthogonal_penalty'] = (orthogonal_penalty * 0.01)
+
+            self.regularizations['attention_orthogonal_penalty'] = orthogonal_penalty * 0.1
 
             if opt.training:
                 tf.logging.info("Building Code2VecModel - {:16s}: ({}) -> ({})"
@@ -165,10 +172,10 @@ class Code2VecModel:
                                                 initializer=tf.zeros_initializer(),
                                                 dtype=tf.float32)
 
-            outputs = (tf.matmul(dropout_inputs_2, regression_weight_2) + regression_bias_2)
+            outputs = tf.matmul(dropout_inputs_2, regression_weight_2) + regression_bias_2
 
-            self.regularizations['regression_L2_1'] = tf.norm(regression_weight_1, ord=2) * 0.005
-            self.regularizations['regression_L2_2'] = tf.norm(regression_weight_2, ord=2) * 0.005
+            self.regularizations['regression_L2_1'] = tf.norm(regression_weight_1, ord=2) * 0.002
+            self.regularizations['regression_L2_2'] = tf.norm(regression_weight_2, ord=2) * 0.002
 
             if opt.training:
                 tf.logging.info("Building Code2VecModel - {:16s}: ({}) -> ({})"

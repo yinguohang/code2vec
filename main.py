@@ -4,9 +4,9 @@
 import os
 import time
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
 import numpy as np
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 
 from data import DataReader
@@ -29,7 +29,7 @@ class Option:
         self.node_cnt = reader.node_converter.cnt + 1
         self.path_cnt = reader.path_converter.cnt + 1
         self.dropout_rate = 0.5
-        self.classification = 2
+        self.classification = -1
 
 
 def train():
@@ -65,7 +65,7 @@ def train():
     with tf.Session(config=session_conf) as sess:
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
-        for i in range(20):
+        for i in range(100):
             start_time = time.time()
 
             train_loss, train_acc = evaluate(sess, train_model, batch_data, train_init_op, train_op)
