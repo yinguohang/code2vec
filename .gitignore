@@ -2,8 +2,7 @@
 cache
 __pycache__
 venv
-data/*.npy
-data/*.txt
+data/*
 log
 *.pyc
 *.tar
