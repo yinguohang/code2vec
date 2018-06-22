@@ -64,7 +64,11 @@ odps_path = args.odps_path
 suppress_stderr = args.suppress_stderr
 
 # Job url returned from odps
+instance_id = None
 job_url, job_id, token = None, None, None
+
+# Printer lock
+printer_lock = threading.Lock()
 
 ###################################
 #  Creating code.tar.gz
@@ -94,10 +98,12 @@ odps_process = subprocess.Popen([odps_path],
 
 
 def output_handler(buf):
-    global job_url
+    global job_url, instance_id
     out = "".join(buf)
     if out.endswith('\n'):
         del buf[:]
+        if out.startswith("ID = "):
+            instance_id = out[5:].strip()
         if out.startswith("http://logview.odps.aliyun-inc.com:8080"):
             job_url = out
             odps_process.send_signal(signal.SIGINT)
@@ -114,12 +120,62 @@ threading.Thread(target=forward_fd,
 threading.Thread(target=forward_fd,
                  args=(odps_process.stdout, sys.stdout, output_handler, lambda: job_url is not None)).start()
 
+
+###################################
+#  Create Job Abort Handler
+###################################
+def abort_signal_handler(_, __):
+    killed = False
+    sys.stderr.write('\x1b[1;31m' + "\nNow killing PAI instance...\n" + '\x1b[0m')
+    sys.stderr.flush()
+    odps_process.terminate()
+
+    odps_terminate_process = subprocess.Popen([odps_path],
+                                              shell=False, bufsize=0,
+                                              stdin=subprocess.PIPE,
+                                              stdout=subprocess.PIPE,
+                                              stderr=subprocess.PIPE)
+    pai_terminate_commands = [
+        "use kelude_open_dw;",
+        "kill INSTANCE_ID;"
+    ]
+
+    def odps_terminate_output_handler(buf):
+        global job_url, instance_id, killed
+        out = "".join(buf)
+        if out.endswith('\n'):
+            del buf[:]
+            if out.startswith("OK"):
+                odps_terminate_process.terminate()
+                killed = True
+        if out.startswith('odps@') and out.endswith('>'):
+            del buf[:]
+            if len(pai_terminate_commands) > 0:
+                odps_terminate_process.stdin.write(
+                    (pai_terminate_commands[0].replace("INSTANCE_ID", instance_id.strip()) + "\n").encode())
+                pai_terminate_commands.pop(0)
+                odps_terminate_process.stdin.flush()
+
+    threading.Thread(target=forward_fd,
+                     args=(odps_terminate_process.stdout, sys.stdout,
+                           odps_terminate_output_handler, lambda: killed)).start()
+    threading.Thread(target=forward_fd,
+                     args=(odps_terminate_process.stderr, sys.stderr,
+                           odps_terminate_output_handler, lambda: killed)).start()
+
+    odps_terminate_process.wait()
+    sys.exit()
+
+
+signal.signal(signal.SIGINT, abort_signal_handler)
+
 while job_url is None:
     time.sleep(0.5)
 
 odps_process.terminate()
 
-print("Pai job launched. Retrieving job information...\n")
+
+print("\nPai job launched. Retrieving job information...\n")
 
 ###################################
 #  Retrieve Job ID and Status
@@ -128,7 +184,7 @@ parsed = urlparse(job_url)
 job_id = parse_qs(parsed.query)['i'][0].strip()
 token = parse_qs(parsed.query)['token'][0].strip()
 
-print("Job ID: {}\nToken: {}\n".format(job_id, token))
+print("ID: {}\nJob ID: {}\nToken: {}\n".format(instance_id, job_id, token))
 
 print("Now waiting for the task to start...\n")
 

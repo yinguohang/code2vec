@@ -34,22 +34,22 @@ def init():
     flags.DEFINE_integer("node_embedding_size", 100,
                          "Node (start and end) embedding size")
 
-    flags.DEFINE_integer("path_embedding_size", 200,
+    flags.DEFINE_integer("path_embedding_size", 250,
                          "Path embedding size")
 
-    flags.DEFINE_integer("encode_size", 100, "Context encoding size")
+    flags.DEFINE_integer("encode_size", 150, "Context encoding size")
 
     flags.DEFINE_integer("classification", -1, "Number of class for classification, or use regression if less than 1")
 
-    flags.DEFINE_integer("attention_layer_dimension", 15, "Dimension of attention layer")
+    flags.DEFINE_integer("attention_layer_dimension", 30, "Dimension of attention layer")
 
     flags.DEFINE_float("dropout_rate", 0.5, "Dropout rate")
 
-    flags.DEFINE_float("encoding_layer_penalty_rate", 0.01, "Encoding layer penalty rate")
+    flags.DEFINE_float("encoding_layer_penalty_rate", 0.003, "Encoding layer penalty rate")
 
     flags.DEFINE_float("attention_layer_penalty_rate", 0.2, "Attention layer penalty rate")
 
-    flags.DEFINE_float("regression_layer_penalty_rate", 0.1, "Regression layer penalty rate")
+    flags.DEFINE_float("regression_layer_penalty_rate", 0.05, "Regression layer penalty rate")
 
     flags.DEFINE_string("optimizer", "adam", "Selected optimizer")
 

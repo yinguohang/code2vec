@@ -2,6 +2,7 @@
 
 # 主程序入口
 import os
+import sys
 import time
 try:
     from Queue import PriorityQueue
@@ -9,6 +10,7 @@ except ImportError:
     from queue import PriorityQueue
 
 import numpy as np
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 
