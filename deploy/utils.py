@@ -21,8 +21,9 @@ def forward_fd(process_fd, sys_fd, handler=None, stop=lambda: False):
     buf = []
     while not stop():
         buf.append(process_fd.read(1).decode())
-        sys_fd.write(buf[-1])
-        sys_fd.flush()
+        if buf[-1] in ['\n', '>']:
+            sys_fd.write("".join(buf))
+            sys_fd.flush()
         if handler is not None:
             handler(buf)
 

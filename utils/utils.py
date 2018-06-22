@@ -12,7 +12,7 @@ def get_optimizer(name):
     if name == "adadelta":
         return tf.train.AdadeltaOptimizer(1.0)
     if name == "adam":
-        return tf.train.AdamOptimizer(0.0005)
+        return tf.train.AdamOptimizer(0.00001)
 
 
 def detect_platform():
