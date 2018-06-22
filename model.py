@@ -55,6 +55,7 @@ class Code2VecModel:
             embedding_end = tf.nn.embedding_lookup(node_embedding, end)
 
             outputs = tf.concat([embedding_start, embedding_path, embedding_end], axis=2)
+            # outputs = embedding_path
 
             if opt.training:
                 tf.logging.info("Building Code2VecModel - {:16s}: ({}, {}, {}) -> ({})"
@@ -80,8 +81,8 @@ class Code2VecModel:
                                                  dtype=tf.float32)
 
             outputs_flatten = tf.nn.tanh(tf.matmul(inputs_dropout, encoding_fc_weight))
-
-            self.regularizations['encoding_fc_weight_L2'] = tf.norm(encoding_fc_weight, ord=2) * 0.3
+            self.regularizations['encoding_fc_weight_L2'] = tf.norm(encoding_fc_weight, ord=2) * opt.encoding_layer_penalty_rate
+            # outputs_flatten = inputs_flatten
 
             outputs = tf.reshape(outputs_flatten, [-1, bag_size, opt.encode_size])
 
@@ -94,7 +95,7 @@ class Code2VecModel:
     def build_attention_layer(self, inputs, mask, opt):
         with tf.variable_scope("attention"):
             bag_size = inputs.get_shape()[1]
-            attention_dimension = 5
+            attention_dimension = opt.attention_layer_dimension
 
             inputs_flatten = tf.reshape(inputs, [-1, opt.encode_size])
             inputs_dropout = tf.layers.dropout(inputs_flatten,
@@ -131,7 +132,7 @@ class Code2VecModel:
             orthogonal_penalty = tf.square(tf.norm(tf.matmul(attention_weight, tf.transpose(attention_weight))
                                                    - tf.eye(attention_dimension), ord='fro', axis=(0, 1)))
 
-            self.regularizations['attention_orthogonal_penalty'] = orthogonal_penalty * 0.1
+            self.regularizations['attention_orthogonal_penalty'] = orthogonal_penalty * opt.attention_layer_penalty_rate
 
             if opt.training:
                 tf.logging.info("Building Code2VecModel - {:16s}: ({}) -> ({})"
@@ -174,8 +175,8 @@ class Code2VecModel:
 
             outputs = tf.matmul(dropout_inputs_2, regression_weight_2) + regression_bias_2
 
-            self.regularizations['regression_L2_1'] = tf.norm(regression_weight_1, ord=2) * 0.002
-            self.regularizations['regression_L2_2'] = tf.norm(regression_weight_2, ord=2) * 0.002
+            self.regularizations['regression_L2_1'] = tf.norm(regression_weight_1, ord=2) * opt.regression_layer_penalty_rate
+            self.regularizations['regression_L2_2'] = tf.norm(regression_weight_2, ord=2) * opt.regression_layer_penalty_rate
 
             if opt.training:
                 tf.logging.info("Building Code2VecModel - {:16s}: ({}) -> ({})"

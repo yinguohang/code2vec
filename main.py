@@ -3,9 +3,9 @@
 # 主程序入口
 import os
 import time
+from Queue import PriorityQueue
 
 import numpy as np
-
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 
@@ -26,10 +26,14 @@ class Option:
         self.node_embedding_size = FLAGS.node_embedding_size
         self.path_embedding_size = FLAGS.path_embedding_size
         self.encode_size = FLAGS.encode_size
+        self.dropout_rate = FLAGS.dropout_rate
+        self.classification = FLAGS.classification
+        self.attention_layer_dimension = FLAGS.attention_layer_dimension
+        self.encoding_layer_penalty_rate = FLAGS.encoding_layer_penalty_rate
+        self.attention_layer_penalty_rate = FLAGS.attention_layer_penalty_rate
+        self.regression_layer_penalty_rate = FLAGS.regression_layer_penalty_rate
         self.node_cnt = reader.node_converter.cnt + 1
         self.path_cnt = reader.path_converter.cnt + 1
-        self.dropout_rate = 0.5
-        self.classification = -1
 
 
 def train():
@@ -65,14 +69,33 @@ def train():
     with tf.Session(config=session_conf) as sess:
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
-        for i in range(100):
+
+        min_eval_loss = PriorityQueue(maxsize=3)
+        stable_min_loss = 0
+
+        for i in range(1000):
             start_time = time.time()
 
             train_loss, train_acc = evaluate(sess, train_model, batch_data, train_init_op, train_op)
             eval_loss, eval_acc = evaluate(sess, eval_model, batch_data, eval_init_op)
 
-            tf.logging.info('Epoch %d: train-loss: %.8f (acc=%.2f), val-loss: %.8f (acc=%.2f), cost-time: %.4f s'
-                            % (i + 1, train_loss, train_acc, eval_loss, eval_acc, time.time() - start_time))
+            if not min_eval_loss.full():
+                min_eval_loss.put(-eval_loss)
+                stable_min_loss = 0
+            else:
+                k = min_eval_loss.get()
+                if k >= -eval_loss:
+                    stable_min_loss += 1
+                else:
+                    stable_min_loss = 0
+                min_eval_loss.put(max(k, -eval_loss))
+
+            tf.logging.info(
+                'Epoch %d: train-loss: %.8f (acc=%.2f), val-loss: %.8f (acc=%.2f), min-loss: %.8f, cost-time: %.4f s'
+                % (i + 1, train_loss, train_acc, eval_loss, eval_acc, -np.mean(min_eval_loss.queue),
+                   time.time() - start_time))
+
+            if stable_min_loss >= 5 and i > 200: break
 
 
 def evaluate(sess, model, batch_data, batch_init_op, op=None):
