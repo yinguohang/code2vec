@@ -81,6 +81,7 @@ class DataReader:
         f = tf.gfile.Open(input_file_name + "-context.txt")
         data_X = []
         data_y = []
+        original_features = []
         X = np.zeros((0, 3))
         lines = f.readlines()
         total = len(lines)
@@ -94,6 +95,7 @@ class DataReader:
                 if X.shape[0] == 0:
                     if len(data_y) > 0:
                         data_y.pop()
+                        original_score.pop()
                     continue
                 # 如果长度不够，则使用0来padding
                 if X.shape[0] < context_bag_size:
@@ -108,6 +110,9 @@ class DataReader:
                 else:
                     score = np.tanh(4 / original_score)
                 data_y.append(score)
+            elif line.startswith("features:"):
+                features = list(filter(lambda x: x != None, map(lambda x: None if x == "None" else float(x), line.split(":")[1].split(","))))
+                original_features.appnd(features)
             else:
                 if X.shape[0] >= context_bag_size:
                     continue
@@ -125,6 +130,7 @@ class DataReader:
         data_X.append(X)
         self.data_X = np.array(data_X)
         self.data_y = np.array(data_y)
+        self.original_features = original_features
         self.m = self.data_y.shape[0]
         print(self.data_X.shape)
         print(self.data_y.shape)
