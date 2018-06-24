@@ -85,7 +85,6 @@ pai_command = "pai -name {}".format(deploy_config['pai_algo']) \
 
 # Start odps process
 odps_process = subprocess.Popen([odps_path, '--project', deploy_config['odps_project'], '-e', pai_command],
-                                shell=False, bufsize=0,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
 
@@ -120,13 +119,10 @@ def abort_signal_handler(signal, handler):
 
     odps_terminate_process = subprocess.Popen([odps_path, '--project', deploy_config['odps_project'],
                                                '-e', 'kill ' + instance_id],
-                                              shell=False, bufsize=0,
-                                              stdin=subprocess.PIPE,
                                               stdout=subprocess.PIPE,
                                               stderr=subprocess.PIPE)
 
     def odps_terminate_output_handler(buf):
-        global job_url, instance_id
         out = "".join(buf)
         if out.endswith('\n'):
             if out.startswith("OK"):
@@ -146,6 +142,8 @@ def abort_signal_handler(signal, handler):
 signal.signal(signal.SIGINT, abort_signal_handler)
 
 odps_process.wait()
+
+os.remove(tar_ball_location_pai)
 
 write_stdout("\nPai job launched. Retrieving job information...\n\n")
 
