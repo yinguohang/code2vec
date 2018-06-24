@@ -60,6 +60,8 @@ class DataReader:
                 np.save(f, self.data_X)
             with tf.gfile.Open(input_file_name + "-" + str(context_bag_size) + "-data-y.npy", "wb") as f:
                 np.save(f, self.data_y)
+            with tf.gfile.Open(input_file_name + "-" + str(context_bag_size) + "-original-features.npy", "wb") as f:
+                np.save(f, self.original_features)
             # with tf.gfile.Open(input_file_name + "-node-converter.pkl", "wb") as f:
             #     pickle.dump(self.node_converter, f)
             # with tf.gfile.Open(input_file_name + "-path-converter.pkl", "wb") as f:
@@ -70,6 +72,8 @@ class DataReader:
                 self.data_X = np.load(f)
             with tf.gfile.Open(input_file_name + "-" + str(context_bag_size) + "-data-y.npy", "rb") as f:
                 self.data_y = np.load(f)
+            with tf.gfile.Open(input_file_name + "-" + str(context_bag_size) + "-original-features.npy", "rb") as f:
+                self.original_features = np.load(f)
             # with tf.gfile.Open(input_file_name + "-node-converter.pkl", "rb") as f:
             #     self.node_converter = pickle.load(f)
             # with tf.gfile.Open(input_file_name + "-path-converter.pkl", "rb") as f:
@@ -81,6 +85,7 @@ class DataReader:
         f = tf.gfile.Open(input_file_name + "-context.txt")
         data_X = []
         data_y = []
+        original_features = []
         X = np.zeros((0, 3))
         lines = f.readlines()
         total = len(lines)
@@ -94,6 +99,7 @@ class DataReader:
                 if X.shape[0] == 0:
                     if len(data_y) > 0:
                         data_y.pop()
+                        original_score.pop()
                     continue
                 # 如果长度不够，则使用0来padding
                 if X.shape[0] < context_bag_size:
@@ -108,6 +114,9 @@ class DataReader:
                 else:
                     score = np.tanh(4 / original_score)
                 data_y.append(score)
+            elif line.startswith("features:"):
+                features = list(filter(lambda x: x != None, map(lambda x: None if x == "None" else float(x), line.split(":")[1].split(","))))
+                original_features.append(features)
             else:
                 if X.shape[0] >= context_bag_size:
                     continue
@@ -125,34 +134,37 @@ class DataReader:
         data_X.append(X)
         self.data_X = np.array(data_X)
         self.data_y = np.array(data_y)
+        self.original_features = np.array(original_features, dtype=np.float32)
         self.m = self.data_y.shape[0]
         print(self.data_X.shape)
         print(self.data_y.shape)
+        print(self.original_features.shape)
         random_index = np.random.permutation(self.m)
         self.data_X = self.data_X[random_index]
         self.data_y = self.data_y[random_index]
 
     @staticmethod
-    def np2tf(X, y):
+    def np2tf(X, y, original_feature):
         dataset = {}
         dataset["start"] = X[:, :, 0].astype(np.int32)
         dataset["path"] = X[:, :, 1].astype(np.int32)
         dataset["end"] = X[:, :, 2].astype(np.int32)
         dataset["score"] = y
+        dataset["original_features"] = original_feature
         return tf.data.Dataset.from_tensor_slices(dataset)
 
     def generate_dataset(self):
-        self.train_X, self.train_y = self.data_X[:int(self.m * 0.6), :, :], self.data_y[:int(self.m * 0.6)]
-        self.dev_X, self.dev_y = self.data_X[int(self.m * 0.6):int(self.m * 0.8), :, :], self.data_y[
-                                                                                         int(self.m * 0.6):int(
-                                                                                             self.m * 0.8)]
-        self.test_X, self.test_y = self.data_X[int(self.m * 0.8):, :, :], self.data_y[int(self.m * 0.8):]
+        gap1 = int(self.m * 0.6)
+        gap2 = int(self.m * 0.8)
+        self.train_X, self.train_y, self.train_original_features = self.data_X[:gap1, :, :], self.data_y[:gap1], self.original_features[:gap1, :]
+        self.dev_X, self.dev_y, self.dev_original_features = self.data_X[gap1:gap2, :, :], self.data_y[gap1:gap2], self.original_features[gap1:gap2, :]
+        self.test_X, self.test_y, self.test_original_features = self.data_X[gap2:, :, :], self.data_y[gap2:], self.original_features[gap2:, :]
         tf.logging.info("Training set: %s" % str(self.train_X.shape))
         tf.logging.info("Validation set: %s" % str(self.dev_X.shape))
         tf.logging.info("Test set: %s" % str(self.test_X.shape))
-        self.train_dataset = DataReader.np2tf(self.train_X, self.train_y).shuffle(buffer_size=60).batch(32)
-        self.dev_dataset = DataReader.np2tf(self.dev_X, self.dev_y).shuffle(buffer_size=60).batch(32)
-        self.test_dataset = DataReader.np2tf(self.test_X, self.test_y).shuffle(buffer_size=60).batch(32)
+        self.train_dataset = DataReader.np2tf(self.train_X, self.train_y, self.train_original_features).shuffle(buffer_size=60).batch(32)
+        self.dev_dataset = DataReader.np2tf(self.dev_X, self.dev_y, self.dev_original_features).shuffle(buffer_size=60).batch(32)
+        self.test_dataset = DataReader.np2tf(self.test_X, self.test_y, self.test_original_features).shuffle(buffer_size=60).batch(32)
 
 
 if __name__ == "__main__":

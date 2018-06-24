@@ -5,7 +5,7 @@ from tensorflow.python.ops.losses.losses_impl import Reduction
 
 
 class Code2VecModel:
-    def __init__(self, start, path, end, score, opt):
+    def __init__(self, start, path, end, score, original_features, opt):
         with tf.device('/cpu:0'):
 
             self.regularizations = {}
@@ -17,7 +17,7 @@ class Code2VecModel:
             mask = tf.logical_not(tf.equal(start, 0))
             attention_outputs = self.build_attention_layer(encoding_outputs, mask, opt)
 
-            regression_outputs = self.build_regression_layer(attention_outputs, opt)
+            regression_outputs = self.build_regression_layer(attention_outputs, original_features, opt)
 
             if opt.classification > 0:
 
@@ -140,17 +140,22 @@ class Code2VecModel:
             return context_sum
 
     # Regression
-    def build_regression_layer(self, inputs, opt):
+    def build_regression_layer(self, inputs, original_features, opt):
         with tf.variable_scope("regression"):
             bag_size = inputs.get_shape()[1]
             output_size = opt.classification if opt.classification > 0 else 1
 
-            dropout_inputs_1 = tf.layers.dropout(inputs,
+            normalized_features = tf.nn.l2_normalize(original_features, dim=1)
+
+            concat_layer = tf.concat([inputs, normalized_features], 1)
+            concat_size = bag_size + normalized_features.get_shape()[1]
+
+            dropout_inputs_1 = tf.layers.dropout(concat_layer,
                                                  rate=opt.dropout_rate,
                                                  training=opt.training)
 
             regression_weight_1 = tf.get_variable("regression_weight_1",
-                                                  [bag_size, bag_size],
+                                                  [concat_size, bag_size],
                                                   initializer=tf.contrib.layers.xavier_initializer(),
                                                   dtype=tf.float32)
             regression_bias_1 = tf.get_variable("regression_bias_1",

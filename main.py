@@ -4,10 +4,9 @@
 import os
 import sys
 import time
-
-if sys.version[0] == '2':
+try:
     from Queue import PriorityQueue
-else:
+except ImportError:
     from queue import PriorityQueue
 
 import numpy as np
@@ -55,18 +54,19 @@ def train():
     path = batch_data['path']
     end = batch_data['end']
     score = batch_data['score']
+    original_features = batch_data['original_features']
 
     train_init_op = iterator.make_initializer(train_data)
     eval_init_op = iterator.make_initializer(eval_data)
 
     with tf.variable_scope("code2vec_model"):
         opt = Option(reader)
-        train_model = Code2VecModel(start, path, end, score, opt)
+        train_model = Code2VecModel(start, path, end, score, original_features, opt)
         train_op = utils.get_optimizer(FLAGS.optimizer).minimize(train_model.loss)
 
     with tf.variable_scope('code2vec_model', reuse=True):
         eval_opt = Option(reader, training=False)
-        eval_model = Code2VecModel(start, path, end, score, eval_opt)
+        eval_model = Code2VecModel(start, path, end, score, original_features, eval_opt)
 
     session_conf = tf.ConfigProto(
         allow_soft_placement=FLAGS.allow_soft_placement,
