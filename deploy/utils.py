@@ -1,5 +1,6 @@
 import json
 import platform
+import sys
 
 import requests
 import tensorflow as tf
@@ -17,15 +18,30 @@ def detect_platform():
     return 'PAI' if is_pai else platform.system().upper()
 
 
+def print_header(header):
+    write_stdout('\n'.join(['', '#' * 40, '# ' + header, '#' * 40, '']))
+
+
+def write_stdout(content):
+    sys.stdout.write(content)
+    sys.stdout.flush()
+
+
+def write_stderr(content):
+    sys.stderr.write('\x1b[1;31m' + content + '\x1b[0m')
+    sys.stderr.flush()
+
+
 def forward_fd(process_fd, sys_fd, handler=None, stop=lambda: False):
     buf = []
     while not stop():
         buf.append(process_fd.read(1).decode())
+        if handler is not None:
+            handler(buf)
         if buf[-1] in ['\n', '>']:
             sys_fd.write("".join(buf))
             sys_fd.flush()
-        if handler is not None:
-            handler(buf)
+            del buf[:]
 
 
 def get_odps_url(job_id, token, task):
