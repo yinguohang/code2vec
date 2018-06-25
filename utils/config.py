@@ -49,7 +49,7 @@ def init():
 
     flags.DEFINE_float("attention_layer_penalty_rate", 0.2, "Attention layer penalty rate")
 
-    flags.DEFINE_float("regression_layer_penalty_rate", 0.5, "Regression layer penalty rate")
+    flags.DEFINE_float("regression_layer_penalty_rate", 0.01, "Regression layer penalty rate")
 
     flags.DEFINE_string("optimizer", "adam", "Selected optimizer")
 

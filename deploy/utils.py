@@ -5,6 +5,7 @@ import threading
 
 import requests
 import tensorflow as tf
+from dateutil.parser import parse
 from tensorflow.python.framework.errors_impl import UnimplementedError, NotFoundError
 
 printer_lock = threading.Lock()
@@ -79,7 +80,7 @@ def format_odps_status_history(status):
     if 'subStatusHistory' not in status:
         return ""
     for sub_status in status['subStatusHistory']:
-        formatted_output += "{} {} {}\n".format(sub_status['start_time'], sub_status['code'], sub_status['description'])
+        formatted_output += "{:%Y-%m-%d %H:%M:%S} {} {}\n".format(parse(sub_status['start_time']), sub_status['code'], sub_status['description'])
     return formatted_output
 
 

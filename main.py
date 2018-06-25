@@ -83,6 +83,7 @@ def train():
 
             train_loss, train_acc = evaluate(sess, train_model, batch_data, train_init_op, train_op)
             eval_loss, eval_acc = evaluate(sess, eval_model, batch_data, eval_init_op)
+            eval_reg_loss, eval_reg_acc = evaluate(sess, train_model, batch_data, eval_init_op)
 
             if not min_eval_loss.full():
                 min_eval_loss.put(-eval_loss)
@@ -95,9 +96,14 @@ def train():
                     stable_min_loss = 0
                 min_eval_loss.put(max(k, -eval_loss))
 
+            # tf.logging.info(
+            #     'Epoch %2d: train-loss: %.5f (acc=%.2f), val-loss: %.5f (acc=%.2f), min-loss: %.5f, cost-time: %.4f s'
+            #     % (i + 1, train_loss, train_acc, eval_loss, eval_acc, -np.mean(min_eval_loss.queue),
+            #        time.time() - start_time))
+
             tf.logging.info(
-                'Epoch %d: train-loss: %.8f (acc=%.2f), val-loss: %.8f (acc=%.2f), min-loss: %.8f, cost-time: %.4f s'
-                % (i + 1, train_loss, train_acc, eval_loss, eval_acc, -np.mean(min_eval_loss.queue),
+                'Epoch %2d: train-loss: %.5f, val-reg: %.5f, val-loss: %.5f, min-loss: %.5f, cost: %.4f s'
+                % (i + 1, train_loss, eval_reg_loss, eval_loss, -np.mean(min_eval_loss.queue),
                    time.time() - start_time))
 
             if stable_min_loss >= 5 and i > 200: break
