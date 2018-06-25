@@ -1,10 +1,13 @@
 import json
 import platform
 import sys
+import threading
 
 import requests
 import tensorflow as tf
 from tensorflow.python.framework.errors_impl import UnimplementedError, NotFoundError
+
+printer_lock = threading.Lock()
 
 
 def detect_platform():
@@ -18,18 +21,19 @@ def detect_platform():
     return 'PAI' if is_pai else platform.system().upper()
 
 
-def print_header(header):
-    write_stdout('\n'.join(['', '#' * 40, '# ' + header, '#' * 40, '']))
+def write_fd(fd, content):
+    printer_lock.acquire()
+    fd.write(content)
+    fd.flush()
+    printer_lock.release()
 
 
 def write_stdout(content):
-    sys.stdout.write(content)
-    sys.stdout.flush()
+    write_fd(sys.stdout, content)
 
 
 def write_stderr(content):
-    sys.stderr.write('\x1b[1;31m' + content + '\x1b[0m')
-    sys.stderr.flush()
+    write_fd(sys.stderr, '\x1b[1;31m' + content + '\x1b[0m')
 
 
 def forward_fd(process_fd, sys_fd, handler=None, stop=lambda: False):
@@ -39,8 +43,7 @@ def forward_fd(process_fd, sys_fd, handler=None, stop=lambda: False):
         if handler is not None:
             handler(buf)
         if buf[-1] in ['\n', '>']:
-            sys_fd.write("".join(buf))
-            sys_fd.flush()
+            write_fd(sys_fd, "".join(buf))
             del buf[:]
 
 
@@ -65,6 +68,10 @@ def combine_overlap_string(old, new):
 
 def retrieve_odps_status(job_id, token):
     return send_odps_request(job_id, token, "cached")
+
+
+def retrieve_odps_detail(job_id, token, task_name):
+    return send_odps_request(job_id, token, "detail&taskname=" + task_name)
 
 
 def format_odps_status_history(status):

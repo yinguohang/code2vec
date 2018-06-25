@@ -11,7 +11,7 @@ base_path = {
 
 data_set = {
     'PAI': 'paths-18728',
-    'DARWIN': 'paths-1000',
+    'DARWIN': 'paths-18728',
     'WINDOWS': 'paths-1000'
 }
 

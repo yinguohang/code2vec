@@ -1,9 +1,9 @@
 .idea
-cache
-__pycache__
 venv
 data/*
+!data/.gitkeep
 log
-*.pyc
-*.tar
+__pycache__
+*.py[cod]
 *.tar.gz
+

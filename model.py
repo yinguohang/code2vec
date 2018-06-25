@@ -20,7 +20,6 @@ class Code2VecModel:
             regression_outputs = self.build_regression_layer(attention_outputs, original_features, opt)
 
             if opt.classification > 0:
-
                 self.loss = tf.losses.sigmoid_cross_entropy(
                     self.regression_to_classification(score, opt.classification),
                     tf.reshape(regression_outputs, [-1, opt.classification]),
@@ -55,7 +54,6 @@ class Code2VecModel:
             embedding_end = tf.nn.embedding_lookup(node_embedding, end)
 
             outputs = tf.concat([embedding_start, embedding_path, embedding_end], axis=2)
-            # outputs = embedding_path
 
             if opt.training:
                 tf.logging.info("Building Code2VecModel - {:16s}: ({}, {}, {}) -> ({})"
@@ -82,7 +80,6 @@ class Code2VecModel:
 
             outputs_flatten = tf.nn.tanh(tf.matmul(inputs_dropout, encoding_fc_weight))
             self.regularizations['encoding_fc_weight_L2'] = tf.norm(encoding_fc_weight, ord=2) * opt.encoding_layer_penalty_rate
-            # outputs_flatten = inputs_flatten
 
             outputs = tf.reshape(outputs_flatten, [-1, bag_size, opt.encode_size])
 

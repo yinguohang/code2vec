@@ -2,7 +2,6 @@
 
 # 主程序入口
 import os
-import sys
 import time
 try:
     from Queue import PriorityQueue

@@ -2,7 +2,6 @@ import argparse
 import os
 import signal
 import subprocess
-import threading
 import time
 
 from config import deploy_config
@@ -39,7 +38,7 @@ args = parser.parse_args()
 # Path to odps console
 odps_path = args.odps_path
 
-# boolean: if show stderr message
+# boolean: whether to show stderr message
 suppress_stderr = args.suppress_stderr
 
 ###################################
@@ -61,49 +60,60 @@ tar_process = subprocess.Popen(["bash", "-c",
                                 + "git ls-tree --full-tree -r --name-only HEAD | "
                                 + "tar -czvf \"" + tar_ball_location + "\" -T -"],
                                stdout=subprocess.PIPE)
-threading.Thread(target=forward_fd, args=(tar_process.stdout, sys.stdout, None,
-                                          lambda: tar_process.poll() is None)).start()
+tar_printer_thread = threading.Thread(target=forward_fd, args=(tar_process.stdout, sys.stdout, None,
+                                                               lambda: tar_process.poll() is None))
+
+tar_printer_thread.start()
+
 tar_process.wait()
+tar_printer_thread.join()
 
-write_stdout("The tar ball is stored at " + tar_ball_location + "\n\n")
-
+write_stdout("The tar ball is stored at " + tar_ball_location + "\n")
 
 ###################################
 #  Launch ODPS + Create PAI Task
 ###################################
-write_stdout("Now launching odps...\n")
+write_stdout("\nNow launching odps...\n")
 
 # Job url returned from odps
 instance_id, job_url = None, None
 
 # Pai commands
-pai_command = "pai -name {}".format(deploy_config['pai_algo']) \
-              + " -Dscript='file://{}'".format(tar_ball_location_pai) \
-              + " -DentryFile='{}'".format(deploy_config['pai_main_entry_file']) \
-              + " -DcheckpointDir='{}'".format(deploy_config['oss_role_arn']) \
-              + " -Dbuckets='{}';".format(deploy_config['oss_role_arn'])
+pai_command = "pai -name {}".format(deploy_config['pai_algo'])
+pai_command += " -Dscript='file://{}'".format(tar_ball_location_pai)
+pai_command += " -DentryFile='{}'".format(deploy_config['pai_main_entry_file'])
+pai_command += " -DcheckpointDir='{}'".format(deploy_config['oss_role_arn'])
+pai_command += " -Dbuckets='{}';".format(deploy_config['oss_role_arn'])
 
 # Start odps process
-odps_process = subprocess.Popen([odps_path, '--project', deploy_config['odps_project'], '-e', pai_command],
+odps_process = subprocess.Popen([odps_path,
+                                 '--project', deploy_config['odps_project'],
+                                 '-e', pai_command],
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
 
 
 def odps_output_handler(buf):
     global job_url, instance_id
-    out = "".join(buf)
-    if out.endswith('\n'):
-        if out.startswith("ID = "):
-            instance_id = out[5:].strip()
-        if out.startswith("http://logview.odps.aliyun-inc.com:8080"):
-            job_url = out
+    output = "".join(buf)
+    if output.endswith('\n'):
+        output = output.strip()
+        if output.startswith("ID = "):
+            instance_id = output[5:]
+        if output.startswith("http://logview.odps.aliyun-inc.com:8080"):
+            job_url = output
             odps_process.terminate()
 
 
-threading.Thread(target=forward_fd, args=(odps_process.stderr, sys.stdout, odps_output_handler,
-                                          lambda: odps_process.poll() is not None)).start()
-threading.Thread(target=forward_fd, args=(odps_process.stdout, sys.stdout, odps_output_handler,
-                                          lambda: odps_process.poll() is not None)).start()
+odps_stderr_thread = threading.Thread(target=forward_fd,
+                                      args=(odps_process.stderr, sys.stdout, odps_output_handler,
+                                            lambda: odps_process.poll() is not None))
+odps_stdout_thread = threading.Thread(target=forward_fd,
+                                      args=(odps_process.stdout, sys.stdout, odps_output_handler,
+                                            lambda: odps_process.poll() is not None))
+
+odps_stderr_thread.start()
+odps_stdout_thread.start()
 
 
 ###################################
@@ -111,7 +121,7 @@ threading.Thread(target=forward_fd, args=(odps_process.stdout, sys.stdout, odps_
 ###################################
 def abort_signal_handler(signal, handler):
     global instance_id
-    write_stderr("Now killing PAI instance...\n")
+    write_stderr("\nNow killing PAI instance...\n")
     try:
         odps_process.terminate()
     except OSError:
@@ -123,47 +133,59 @@ def abort_signal_handler(signal, handler):
                                               stderr=subprocess.PIPE)
 
     def odps_terminate_output_handler(buf):
-        out = "".join(buf)
-        if out.endswith('\n'):
-            if out.startswith("OK"):
+        output = "".join(buf)
+        if output.endswith('\n'):
+            output = output.strip()
+            if output.startswith("OK") or output.startswith("FAILED"):
                 odps_terminate_process.terminate()
 
-    threading.Thread(target=forward_fd,
-                     args=(odps_terminate_process.stdout, sys.stdout, odps_terminate_output_handler,
-                           lambda: odps_terminate_process.poll() is not None)).start()
-    threading.Thread(target=forward_fd,
-                     args=(odps_terminate_process.stderr, sys.stderr, odps_terminate_output_handler,
-                           lambda: odps_terminate_process.poll() is not None)).start()
+    odps_terminate_stdout_thread = threading.Thread(target=forward_fd,
+                                                    args=(odps_terminate_process.stdout, sys.stdout,
+                                                          odps_terminate_output_handler,
+                                                          lambda: odps_terminate_process.poll() is not None))
+    odps_terminate_stderr_thread = threading.Thread(target=forward_fd,
+                                                    args=(odps_terminate_process.stderr, sys.stderr,
+                                                          odps_terminate_output_handler,
+                                                          lambda: odps_terminate_process.poll() is not None))
+    odps_terminate_stdout_thread.start()
+    odps_terminate_stderr_thread.start()
 
     odps_terminate_process.wait()
-    sys.exit()
+    odps_terminate_stdout_thread.join()
+    odps_terminate_stderr_thread.join()
+
+    exit(0)
 
 
 signal.signal(signal.SIGINT, abort_signal_handler)
 
 odps_process.wait()
+odps_stderr_thread.join()
+odps_stdout_thread.join()
 
 os.remove(tar_ball_location_pai)
 
-write_stdout("\nPai job launched. Retrieving job information...\n\n")
-
-
 ###################################
-#  Retrieve Job ID and Status
+#  Retrieve Job ID
 ###################################
+write_stdout("\nPai job launched. Retrieving job information...\n")
+
 query = parse_qs(urlparse(job_url).query)
 job_id = query['i'][0].strip()
 token = query['token'][0].strip()
 
-write_stdout("Job ID: {}\nToken: {}\n\n".format(job_id, token))
+write_stdout("Job ID: {}\nToken: {}\n".format(job_id, token))
 
-write_stdout("Now waiting for the task to start...\n")
+###################################
+#  Retrieve Job Status
+###################################
+write_stdout("\nNow waiting for the task to start...\n")
 
-status = ""
+status_history = ""
 wait_pos, task_name = None, None
 while True:
     if wait_pos is not None and task_name is not None:
-        detail = send_odps_request(job_id, token, "detail&taskname=" + task_name)
+        detail = retrieve_odps_detail(job_id, token, task_name)
         try:
             log_id = detail['mapReduce']['jobs'][0]['tasks'][0]['instances'][0]['logId']
             break
@@ -172,36 +194,33 @@ while True:
 
     cached = retrieve_odps_status(job_id, token)
     if 'subStatusHistory' in cached:
-        status, new_status = combine_overlap_string(status, format_odps_status_history(cached))
-        sys.stdout.write(new_status)
-        sys.stdout.flush()
+        status_history, new_status_history = \
+            combine_overlap_string(status_history, format_odps_status_history(cached))
+        write_stdout(new_status_history)
     if 'taskName' in cached and cached['taskName'] != task_name:
         task_name = cached['taskName']
-        print("Task Name: {}".format(task_name))
+        write_stdout("Task Name: {}\n".format(task_name))
     if 'waitPos' in cached and cached['waitPos'] != wait_pos:
         wait_pos = cached['waitPos']
-        print("Current Waitlist Position: {}".format(wait_pos))
-
+        write_stdout("Current Waitlist Position: {}\n".format(wait_pos))
     time.sleep(1)
-print("")
+write_stdout("")
 
 #######################################
 #  Connect to Remote Stdout & Stderr
 #######################################
-print("Task is now running. Connecting to remote console...\n")
+write_stdout("\nTask is now running. Connecting to remote console...\n")
 
-stdout = ""
-stderr = ""
-status = "Running"
+stdout, stderr, status = "", "", "Running"
 while status == "Running":
     status = retrieve_odps_status(job_id, token)['status']
-    stdout, new_stdout = combine_overlap_string(stdout, retrieve_odps_log(job_id, token, log_id, log_type="Stdout"))
-    sys.stdout.write(new_stdout)
-    sys.stdout.flush()
+    stdout, new_stdout = \
+        combine_overlap_string(stdout, retrieve_odps_log(job_id, token, log_id, log_type="Stdout"))
+    write_stdout(new_stdout)
     if not suppress_stderr:
-        stderr, new_stderr = combine_overlap_string(stderr, retrieve_odps_log(job_id, token, log_id, log_type="Stderr"))
-        sys.stderr.write('\x1b[1;31m' + new_stderr + '\x1b[0m')
-        sys.stderr.flush()
+        stderr, new_stderr = \
+            combine_overlap_string(stderr, retrieve_odps_log(job_id, token, log_id, log_type="Stderr"))
+        write_stderr(new_stderr)
     time.sleep(1)
 
-print("\nFinished")
+write_stdout("\nFinished\n")
