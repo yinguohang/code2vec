@@ -61,7 +61,7 @@ def train():
     with tf.variable_scope("code2vec_model"):
         opt = Option(reader)
         train_model = Code2VecModel(start, path, end, score, original_features, opt)
-        train_op = utils.get_optimizer(FLAGS.optimizer).minimize(train_model.loss)
+        train_op = utils.get_optimizer(FLAGS.optimizer, FLAGS.learning_rate).minimize(train_model.loss)
 
     with tf.variable_scope('code2vec_model', reuse=True):
         eval_opt = Option(reader, training=False)

@@ -8,11 +8,12 @@ import tensorflow as tf
 from tensorflow.python.framework.errors_impl import UnimplementedError, NotFoundError
 
 
-def get_optimizer(name):
-    if name == "adadelta":
-        return tf.train.AdadeltaOptimizer(1.0)
-    if name == "adam":
-        return tf.train.AdamOptimizer(0.001)
+def get_optimizer(optimizer, learning_rate):
+    if optimizer == "adadelta":
+        return tf.train.AdadeltaOptimizer(learning_rate)
+    if optimizer == "adam":
+        return tf.train.AdamOptimizer(learning_rate)
+    raise RuntimeError("Unknown optimizer " + optimizer)
 
 
 def detect_platform():
@@ -58,7 +59,12 @@ def init_tf_logging(log_path):
     ch.setFormatter(formatter)
 
     # Init logging
-    tf.logging._logger.removeHandler(tf.logging._handler)
-    tf.logging._logger.addHandler(ch)
-    tf.logging._logger.addHandler(fh)
-    tf.logging._logger.setLevel(logging.DEBUG)
+    if tf.__version__ < "1.5.0":
+        logger = tf.logging._logger
+    else:
+        logger = tf.logging.__get_logger()
+    for handler in logger.handlers:
+        logger.removeHandler(handler)
+    logger.addHandler(ch)
+    logger.addHandler(fh)
+    logger.setLevel(logging.DEBUG)
