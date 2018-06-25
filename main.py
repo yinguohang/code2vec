@@ -38,7 +38,9 @@ class Option:
         self.regression_layer_penalty_rate = FLAGS.regression_layer_penalty_rate
         self.node_cnt = reader.node_converter.cnt + 1
         self.path_cnt = reader.path_converter.cnt + 1
-
+        self.concat_code2vec_size = FLAGS.concat_code2vec_size
+        self.concat_original_feature_size = FLAGS.concat_original_feature_size
+        self.reduced_size = FLAGS.reduced_size
 
 def train():
     reader = DataReader(os.path.join(FLAGS.data_path, FLAGS.data_set), FLAGS.context_bag_size)

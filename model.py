@@ -139,22 +139,48 @@ class Code2VecModel:
     # Regression
     def build_regression_layer(self, inputs, original_features, opt):
         with tf.variable_scope("regression"):
-            bag_size = inputs.get_shape()[1]
             output_size = opt.classification if opt.classification > 0 else 1
 
-            concat_layer = tf.concat([inputs, original_features], 1)
-            concat_size = bag_size + original_features.get_shape()[1]
+            fully_connected_weight_1 = tf.get_variable("fully_connected_weight_1",
+                                                      [inputs.get_shape()[1], opt.concat_code2vec_size],
+                                                      initializer=tf.contrib.layers.xavier_initializer(),
+                                                      dtype=tf.float32
+                                                      )
+
+            fully_connected_bias_1 = tf.get_variable("fully_connected_bias_1",
+                                                     [opt.concat_code2vec_size],
+                                                     initializer=tf.contrib.layers.xavier_initializer(),
+                                                     dtype=tf.float32
+                                                     )
+
+            fully_connected_weight_2 = tf.get_variable("fully_connected_weight_2",
+                                                       [original_features.get_shape()[1], opt.concat_original_feature_size],
+                                                       initializer=tf.contrib.layers.xavier_initializer(),
+                                                       dtype=tf.float32
+                                                       )
+
+            fully_connected_bias_2 = tf.get_variable("fully_connected_bias_2",
+                                                     [opt.concat_original_feature_size],
+                                                     initializer=tf.contrib.layers.xavier_initializer(),
+                                                     dtype=tf.float32
+                                                     )
+
+            concat_word2vec = tf.nn.relu(tf.matmul(inputs, fully_connected_weight_1) + fully_connected_bias_1)
+            concat_original_feature = tf.nn.relu(tf.matmul(original_features, fully_connected_weight_2) + fully_connected_bias_2)
+
+            concat_layer = tf.concat([concat_word2vec, concat_original_feature], 1)
+            concat_size = concat_layer.get_shape()[1]
 
             dropout_inputs_1 = tf.layers.dropout(concat_layer,
                                                  rate=opt.dropout_rate,
                                                  training=opt.training)
 
             regression_weight_1 = tf.get_variable("regression_weight_1",
-                                                  [concat_size, bag_size],
+                                                  [concat_size, opt.reduced_size],
                                                   initializer=tf.contrib.layers.xavier_initializer(),
                                                   dtype=tf.float32)
             regression_bias_1 = tf.get_variable("regression_bias_1",
-                                                [bag_size],
+                                                [opt.reduced_size],
                                                 initializer=tf.zeros_initializer(),
                                                 dtype=tf.float32)
 
@@ -165,7 +191,7 @@ class Code2VecModel:
                                                  training=opt.training)
 
             regression_weight_2 = tf.get_variable("regression_weight_2",
-                                                  [bag_size, output_size],
+                                                  [opt.reduced_size, output_size],
                                                   initializer=tf.contrib.layers.xavier_initializer(),
                                                   dtype=tf.float32)
             regression_bias_2 = tf.get_variable("regression_bias_2",

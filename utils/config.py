@@ -61,3 +61,9 @@ def init():
     flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 
     flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
+
+    flags.DEFINE_integer("concat_code2vec_size", 20, "code2vec size when concating")
+
+    flags.DEFINE_integer("concat_original_feature_size", 20, "original feature size when concating")
+
+    flags.DEFINE_integer("reduced_size", 10, "Hidden units number between concat layer and output layer")
