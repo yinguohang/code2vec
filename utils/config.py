@@ -54,7 +54,7 @@ def init():
     flags.DEFINE_string("optimizer", "adam", "Selected optimizer")
 
     if flags.FLAGS.optimizer == "adam":
-        flags.DEFINE_string("learning_rate", 0.0003, "Learning rate")
+        flags.DEFINE_string("learning_rate", 0.00005, "Learning rate")
     elif flags.FLAGS.optimizer == "adadelta":
         flags.DEFINE_string("learning_rate", 1.0, "Learning rate")
 
