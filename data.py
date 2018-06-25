@@ -35,6 +35,12 @@ class Converter:
         else:
             return self.names[i - 1]
 
+class Scalar:
+    def load(self, X):
+        self.s = np.sum(X * X, axis=0, keepdims=True)
+        self.mean = np.mean(X, axis=0, keepdims=True)
+    def apply(self, X):
+        return (X - self.mean) / (self.s + 1e-8)
 
 class DataReader:
     def __init__(self, input_file_name, context_bag_size):
@@ -99,7 +105,7 @@ class DataReader:
                 if X.shape[0] == 0:
                     if len(data_y) > 0:
                         data_y.pop()
-                        original_score.pop()
+                        original_features.pop()
                     continue
                 # 如果长度不够，则使用0来padding
                 if X.shape[0] < context_bag_size:
@@ -115,7 +121,7 @@ class DataReader:
                     score = np.tanh(4 / original_score)
                 data_y.append(score)
             elif line.startswith("features:"):
-                features = list(filter(lambda x: x != None, map(lambda x: None if x == "None" else float(x), line.split(":")[1].split(","))))
+                features = list(map(lambda x: None if x == "None" else float(x), line.split(":")[1].split(",")))
                 original_features.append(features)
             else:
                 if X.shape[0] >= context_bag_size:
@@ -135,6 +141,11 @@ class DataReader:
         self.data_X = np.array(data_X)
         self.data_y = np.array(data_y)
         self.original_features = np.array(original_features, dtype=np.float32)
+        self.original_features = self.original_features[:, ~np.all(np.isnan(self.original_features), axis=0)]
+        # 过滤掉所有不应该有None的行
+        self.data_X = self.data_X[~np.any(np.isnan(self.original_features), axis=1), :, :]
+        self.data_y = self.data_y[~np.any(np.isnan(self.original_features), axis=1)]
+        self.original_features = self.original_features[~np.any(np.isnan(self.original_features), axis=1), :]
         self.m = self.data_y.shape[0]
         print(self.data_X.shape)
         print(self.data_y.shape)
@@ -156,6 +167,9 @@ class DataReader:
     def generate_dataset(self):
         gap1 = int(self.m * 0.6)
         gap2 = int(self.m * 0.8)
+        self.scalar = Scalar()
+        self.scalar.load(self.original_features[:gap1, :])
+        self.original_features = self.scalar.apply(self.original_features)
         self.train_X, self.train_y, self.train_original_features = self.data_X[:gap1, :, :], self.data_y[:gap1], self.original_features[:gap1, :]
         self.dev_X, self.dev_y, self.dev_original_features = self.data_X[gap1:gap2, :, :], self.data_y[gap1:gap2], self.original_features[gap1:gap2, :]
         self.test_X, self.test_y, self.test_original_features = self.data_X[gap2:, :, :], self.data_y[gap2:], self.original_features[gap2:, :]

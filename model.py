@@ -142,10 +142,8 @@ class Code2VecModel:
             bag_size = inputs.get_shape()[1]
             output_size = opt.classification if opt.classification > 0 else 1
 
-            normalized_features = tf.nn.l2_normalize(original_features, dim=1)
-
-            concat_layer = tf.concat([inputs, normalized_features], 1)
-            concat_size = bag_size + normalized_features.get_shape()[1]
+            concat_layer = tf.concat([inputs, original_features], 1)
+            concat_size = bag_size + original_features.get_shape()[1]
 
             dropout_inputs_1 = tf.layers.dropout(concat_layer,
                                                  rate=opt.dropout_rate,
