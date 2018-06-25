@@ -80,7 +80,8 @@ def format_odps_status_history(status):
     if 'subStatusHistory' not in status:
         return ""
     for sub_status in status['subStatusHistory']:
-        formatted_output += "{:%Y-%m-%d %H:%M:%S} {} {}\n".format(parse(sub_status['start_time']), sub_status['code'], sub_status['description'])
+        formatted_output += "{:%Y-%m-%d %H:%M:%S} - {}\n"\
+            .format(parse(sub_status['start_time']), sub_status['description'])
     return formatted_output
 
 

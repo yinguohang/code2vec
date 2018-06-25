@@ -32,11 +32,16 @@ A script that helps you to automatically upload PAI tasks.
 
 """, formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('odps_path', help='Path to odps console')
+parser.add_argument('--instance_id', default=None, help='An already existed instance id')
+parser.add_argument('--job_url', default=None, help='An already existed job url')
 parser.add_argument('--suppress_stderr', action='store_true')
 args = parser.parse_args()
 
 # Path to odps console
 odps_path = args.odps_path
+
+# Instance ID and job url from odps
+instance_id, job_url = args.instance_id, args.job_url
 
 # boolean: whether to show stderr message
 suppress_stderr = args.suppress_stderr
@@ -54,117 +59,141 @@ if detect_platform() == "WINDOWS":
     tar_ball_location_pai = tar_ball_location.replace("\\", "\\\\")
     tar_ball_location = "/" + tar_ball_location.replace("\\", "/").replace(":", "")
 
-# Start tar process
-tar_process = subprocess.Popen(["bash", "-c",
-                                "cd `git rev-parse --show-toplevel`;"
-                                + "git ls-tree --full-tree -r --name-only HEAD | "
-                                + "tar -czvf \"" + tar_ball_location + "\" -T -"],
-                               stdout=subprocess.PIPE)
-tar_printer_thread = threading.Thread(target=forward_fd, args=(tar_process.stdout, sys.stdout, None,
-                                                               lambda: tar_process.poll() is None))
 
-tar_printer_thread.start()
+def task_launch_tar():
+    # Start tar process
+    tar_process = subprocess.Popen(["bash", "-c",
+                                    "cd `git rev-parse --show-toplevel`;"
+                                    + "git ls-tree --full-tree -r --name-only HEAD | "
+                                    + "tar -czvf \"" + tar_ball_location + "\" -T -"],
+                                   stdout=subprocess.PIPE)
+    tar_printer_thread = threading.Thread(target=forward_fd, args=(tar_process.stdout, sys.stdout, None,
+                                                                   lambda: tar_process.poll() is None))
 
-tar_process.wait()
-tar_printer_thread.join()
-time.sleep(1)
+    tar_printer_thread.start()
 
-write_stdout("The tar ball is stored at " + tar_ball_location + "\n")
+    tar_process.wait()
+    tar_printer_thread.join()
+    time.sleep(1)
+
+    write_stdout("The tar ball is stored at " + tar_ball_location + "\n")
+
+
+if instance_id is None or job_url is None:
+    task_launch_tar()
+else:
+    write_stdout("Skipped\n")
 
 ###################################
 #  Launch ODPS + Create PAI Task
 ###################################
 write_stdout("\nNow launching odps...\n")
 
-# Job url returned from odps
-instance_id, job_url = None, None
-
-# Pai commands
-pai_command = "pai -name {}".format(deploy_config['pai_algo'])
-pai_command += " -Dscript='file://{}'".format(tar_ball_location_pai)
-pai_command += " -DentryFile='{}'".format(deploy_config['pai_main_entry_file'])
-pai_command += " -DcheckpointDir='{}'".format(deploy_config['oss_role_arn'])
-pai_command += " -Dbuckets='{}';".format(deploy_config['oss_role_arn'])
-
-# Start odps process
-odps_process = subprocess.Popen([odps_path,
-                                 '--project', deploy_config['odps_project'],
-                                 '-e', pai_command],
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+odps_process = None
 
 
-def odps_output_handler(buf):
-    global job_url, instance_id
-    output = "".join(buf)
-    if output.endswith('\n'):
-        output = output.strip()
-        if output.startswith("ID = "):
-            instance_id = output[5:]
-        if output.startswith("http://logview.odps.aliyun-inc.com:8080"):
-            job_url = output
-            odps_process.terminate()
+def task_launch_odps():
+    global odps_process
+    # Pai commands
+    pai_command = "pai -name {}".format(deploy_config['pai_algo'])
+    pai_command += " -Dscript='file://{}'".format(tar_ball_location_pai)
+    pai_command += " -DentryFile='{}'".format(deploy_config['pai_main_entry_file'])
+    pai_command += " -DcheckpointDir='{}'".format(deploy_config['oss_role_arn'])
+    pai_command += " -Dbuckets='{}';".format(deploy_config['oss_role_arn'])
 
+    # Start odps process
+    odps_process = subprocess.Popen([odps_path,
+                                     '--project', deploy_config['odps_project'],
+                                     '-e', pai_command],
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
 
-odps_stderr_thread = threading.Thread(target=forward_fd,
-                                      args=(odps_process.stderr, sys.stdout, odps_output_handler,
-                                            lambda: odps_process.poll() is not None))
-odps_stdout_thread = threading.Thread(target=forward_fd,
-                                      args=(odps_process.stdout, sys.stdout, odps_output_handler,
-                                            lambda: odps_process.poll() is not None))
+    def odps_output_handler(buf):
+        global job_url, instance_id
+        output = "".join(buf)
+        if output.endswith('\n'):
+            output = output.strip()
+            if output.startswith("ID = "):
+                instance_id = output[5:]
+            if output.startswith("http://logview.odps.aliyun-inc.com:8080"):
+                job_url = output
+                odps_process.terminate()
 
-odps_stderr_thread.start()
-odps_stdout_thread.start()
+    odps_stderr_thread = threading.Thread(target=forward_fd,
+                                          args=(odps_process.stderr, sys.stdout, odps_output_handler,
+                                                lambda: odps_process.poll() is not None))
+    odps_stdout_thread = threading.Thread(target=forward_fd,
+                                          args=(odps_process.stdout, sys.stdout, odps_output_handler,
+                                                lambda: odps_process.poll() is not None))
+
+    odps_stderr_thread.start()
+    odps_stdout_thread.start()
+
+    odps_process.wait()
+    odps_stderr_thread.join()
+    odps_stdout_thread.join()
+
+    os.remove(tar_ball_location_pai)
 
 
 ###################################
 #  Create Job Abort Handler
 ###################################
-def abort_signal_handler(signal, handler):
-    global instance_id
-    write_stderr("\nNow killing PAI instance...\n")
-    try:
-        odps_process.terminate()
-    except OSError:
-        pass
+def task_terminate_handler():
+    def abort_signal_handler(signal, handler):
+        global instance_id, odps_process
 
-    odps_terminate_process = subprocess.Popen([odps_path, '--project', deploy_config['odps_project'],
-                                               '-e', 'kill ' + instance_id],
-                                              stdout=subprocess.PIPE,
-                                              stderr=subprocess.PIPE)
+        write_stderr("\nNow killing PAI instance...\n")
+        if odps_process is not None:
+            try:
+                odps_process.terminate()
+            except OSError:
+                pass
 
-    def odps_terminate_output_handler(buf):
-        output = "".join(buf)
-        if output.endswith('\n'):
-            output = output.strip()
-            if output.startswith("OK") or output.startswith("FAILED"):
-                odps_terminate_process.terminate()
+        if instance_id is None:
+            write_stderr("PAI Instance has not been launched.\n")
+            exit(0)
+            return
 
-    odps_terminate_stdout_thread = threading.Thread(target=forward_fd,
-                                                    args=(odps_terminate_process.stdout, sys.stdout,
-                                                          odps_terminate_output_handler,
-                                                          lambda: odps_terminate_process.poll() is not None))
-    odps_terminate_stderr_thread = threading.Thread(target=forward_fd,
-                                                    args=(odps_terminate_process.stderr, sys.stderr,
-                                                          odps_terminate_output_handler,
-                                                          lambda: odps_terminate_process.poll() is not None))
-    odps_terminate_stdout_thread.start()
-    odps_terminate_stderr_thread.start()
+        odps_terminate_process = subprocess.Popen([odps_path, '--project', deploy_config['odps_project'],
+                                                   '-e', 'kill ' + instance_id],
+                                                  stdout=subprocess.PIPE,
+                                                  stderr=subprocess.PIPE)
 
-    odps_terminate_process.wait()
-    odps_terminate_stdout_thread.join()
-    odps_terminate_stderr_thread.join()
+        def odps_terminate_output_handler(buf):
+            output = "".join(buf)
+            if output.endswith('\n'):
+                output = output.strip()
+                if output.startswith("OK") or output.startswith("FAILED"):
+                    odps_terminate_process.terminate()
 
-    exit(0)
+        odps_terminate_stdout_thread = threading.Thread(target=forward_fd,
+                                                        args=(odps_terminate_process.stdout, sys.stdout,
+                                                              odps_terminate_output_handler,
+                                                              lambda: odps_terminate_process.poll() is not None))
+        odps_terminate_stderr_thread = threading.Thread(target=forward_fd,
+                                                        args=(odps_terminate_process.stderr, sys.stderr,
+                                                              odps_terminate_output_handler,
+                                                              lambda: odps_terminate_process.poll() is not None))
+        odps_terminate_stdout_thread.start()
+        odps_terminate_stderr_thread.start()
+
+        odps_terminate_process.wait()
+        odps_terminate_stdout_thread.join()
+        odps_terminate_stderr_thread.join()
+
+        exit(0)
+
+    signal.signal(signal.SIGINT, abort_signal_handler)
 
 
-signal.signal(signal.SIGINT, abort_signal_handler)
+task_terminate_handler()
 
-odps_process.wait()
-odps_stderr_thread.join()
-odps_stdout_thread.join()
-
-os.remove(tar_ball_location_pai)
+if instance_id is None or job_url is None:
+    task_launch_odps()
+else:
+    write_stdout("ID = {}\n".format(instance_id))
+    write_stdout("{}\n".format(job_url))
 
 ###################################
 #  Retrieve Job ID
@@ -175,7 +204,8 @@ query = parse_qs(urlparse(job_url).query)
 job_id = query['i'][0].strip()
 token = query['token'][0].strip()
 
-write_stdout("Job ID: {}\nToken: {}\n".format(job_id, token))
+write_stdout("Job ID = {}\n".format(job_id))
+write_stdout("Token  = {}\n".format(token))
 
 ###################################
 #  Retrieve Job Status
@@ -183,8 +213,8 @@ write_stdout("Job ID: {}\nToken: {}\n".format(job_id, token))
 write_stdout("\nNow waiting for the task to start...\n")
 
 status_history = ""
-wait_pos, task_name, log_id = None, None, None
-while log_id is None:
+wait_pos, queue_length, task_name, log_id = None, None, None, None
+while log_id is None or len(log_id) > 0:
     cached = retrieve_odps_status(job_id, token)
     if 'subStatusHistory' in cached:
         status_history, new_status_history = \
@@ -193,9 +223,11 @@ while log_id is None:
     if 'taskName' in cached and cached['taskName'] != task_name:
         task_name = cached['taskName']
         write_stdout("- Task Name: {}\n".format(task_name))
+    if 'queueLength' in cached and cached['queueLength'] != queue_length:
+        queue_length = cached['queueLength']
     if 'waitPos' in cached and cached['waitPos'] != wait_pos:
         wait_pos = cached['waitPos']
-        write_stdout("- Current Waitlist Position: {}\n".format(wait_pos))
+        write_stdout("- Current Waitlist Position: {}/{}\n".format(wait_pos, queue_length))
 
     if wait_pos is not None and wait_pos == 0 and task_name is not None:
         try:
