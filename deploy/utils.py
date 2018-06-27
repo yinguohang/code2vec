@@ -40,7 +40,7 @@ def write_stderr(content):
 
 def die(message):
     write_stderr('\n' + message + '\n')
-    exit(-1)
+    exit(1)
 
 
 def forward_fd(process_fd, sys_fd, handler=None, stop=lambda: False):

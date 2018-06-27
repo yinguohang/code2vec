@@ -160,9 +160,7 @@ def task_terminate_handler():
                 pass
 
         if instance_id is None:
-            write_stderr("PAI Instance has not been launched.\n")
-            exit(0)
-            return
+            die("PAI Instance has not been launched.\n")
 
         odps_terminate_process = subprocess.Popen([odps_path, '--project', deploy_config['odps_project'],
                                                    '-e', 'kill ' + instance_id],
