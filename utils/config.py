@@ -19,6 +19,11 @@ data_set = {
 def init():
     flags = tf.app.flags
 
+    ############################
+    # Global
+    ############################
+
+    # System Settings
     flags.DEFINE_string("data_set", data_set[utils.detect_platform()],
                         "Name of the data set to be used")
 
@@ -28,33 +33,11 @@ def init():
     flags.DEFINE_string("log_path", os.path.join(base_path[utils.detect_platform()], 'log'),
                         "Absolute path of log directory")
 
-    flags.DEFINE_integer("context_bag_size", 100,
-                         "The number of context paths in AST to be used in training")
-
-    flags.DEFINE_integer("node_embedding_size", 100,
-                         "Node (start and end) embedding size")
-
-    flags.DEFINE_integer("path_embedding_size", 250,
-                         "Path embedding size")
-
-    flags.DEFINE_integer("encode_size", 150, "Context encoding size")
-
-    flags.DEFINE_integer("classification", -1, "Number of class for classification, or use regression if less than 1")
-
-    flags.DEFINE_integer("attention_layer_dimension", 30, "Dimension of attention layer")
-
-    flags.DEFINE_float("dropout_rate", 0.5, "Dropout rate")
-
-    flags.DEFINE_float("encoding_layer_penalty_rate", 0.003, "Encoding layer penalty rate")
-
-    flags.DEFINE_float("attention_layer_penalty_rate", 0.2, "Attention layer penalty rate")
-
-    flags.DEFINE_float("regression_layer_penalty_rate", 0.03, "Regression layer penalty rate")
-
+    # Model Settings
     flags.DEFINE_string("optimizer", "adam", "Selected optimizer")
 
     if flags.FLAGS.optimizer == "adam":
-        flags.DEFINE_string("learning_rate", 0.00005, "Learning rate")
+        flags.DEFINE_string("learning_rate", 0.0001, "Learning rate")
     elif flags.FLAGS.optimizer == "adadelta":
         flags.DEFINE_string("learning_rate", 1.0, "Learning rate")
 
@@ -62,8 +45,60 @@ def init():
 
     flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
 
-    flags.DEFINE_integer("concat_code2vec_size", 20, "code2vec size when concating")
+    flags.DEFINE_float("dropout_rate", 0.5, "Dropout rate")
 
-    flags.DEFINE_integer("concat_original_feature_size", 20, "original feature size when concating")
+    flags.DEFINE_integer("classification", -1,
+                         "Number of class for classification, or use regression if less than 1")
 
-    flags.DEFINE_integer("reduced_size", 10, "Hidden units number between concat layer and output layer")
+    ############################
+    # Embedding Layer
+    ############################
+
+    # Embedding Layer Structure Parameter
+    flags.DEFINE_integer("embedding_bag_size", 100,
+                         "The number of context paths in AST to be used in training")
+
+    flags.DEFINE_integer("embedding_node_size", 100,
+                         "Node (start and end) embedding size")
+
+    flags.DEFINE_integer("embedding_path_size", 250,
+                         "Path embedding size")
+
+    ############################
+    # Encoding Layer
+    ############################
+
+    # Encoding Layer Structure Parameter
+    flags.DEFINE_integer("encoding_size", 150, "Context encoding size")
+
+    # Encoding Layer Penalty Parameter
+    flags.DEFINE_float("encoding_weight_penalty_rate", 0.03, "Encoding layer penalty rate")
+
+    ############################
+    # Attention Layer
+    ############################
+
+    # Attention Layer Structure Parameter
+    flags.DEFINE_integer("attention_dimension_size", 30, "Dimension of attention layer")
+
+    # Attention Layer Penalty Parameter
+    flags.DEFINE_float("attention_weight_penalty_rate", 0.2, "Attention layer penalty rate")
+
+    ############################
+    # Regression Layer
+    ############################
+
+    # Regression Layer Structure Parameter
+    flags.DEFINE_integer("regression_concat_vec_size", 100, "code2vec size when concating")
+
+    flags.DEFINE_integer("regression_concat_feature_size", 50, "original feature size when concating")
+
+    flags.DEFINE_integer("regression_hidden_layer_size", 50, "Hidden units between concat layer and output layer")
+
+    # Regression Layer Penalty Parameter
+    flags.DEFINE_float("regression_vec_weight_penalty_rate", 0.03, "")
+
+    flags.DEFINE_float("regression_feature_weight_penalty_rate", 0.02, "")
+
+    flags.DEFINE_float("regression_layer_penalty_rate", 0.03, "Regression layer penalty rate")
+

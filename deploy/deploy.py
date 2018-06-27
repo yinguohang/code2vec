@@ -74,7 +74,7 @@ def task_launch_tar():
 
     tar_process.wait()
     tar_printer_thread.join()
-    time.sleep(1)
+    time.sleep(0.5)
 
     write_stdout("The tar ball is stored at " + tar_ball_location + "\n")
 
@@ -213,31 +213,35 @@ write_stdout("Token  = {}\n".format(token))
 write_stdout("\nNow waiting for the task to start...\n")
 
 status_history = ""
+printed_waitlist = False
 wait_pos, queue_length, task_name, log_id = None, None, None, None
-while log_id is None or len(log_id) > 0:
+while True:
     cached = retrieve_odps_status(job_id, token)
+    if 'taskName' in cached and cached['taskName'] != task_name:
+        task_name = cached['taskName']
+    if 'waitPos' in cached and cached['waitPos'] != wait_pos:
+        wait_pos = cached['waitPos']
+    if 'queueLength' in cached and cached['queueLength'] != queue_length:
+        queue_length = cached['queueLength']
     if 'subStatusHistory' in cached:
         status_history, new_status_history = \
             combine_overlap_string(status_history, format_odps_status_history(cached))
-        write_stdout(new_status_history)
-    if 'taskName' in cached and cached['taskName'] != task_name:
-        task_name = cached['taskName']
-        write_stdout("- Task Name: {}\n".format(task_name))
-    if 'queueLength' in cached and cached['queueLength'] != queue_length:
-        queue_length = cached['queueLength']
-    if 'waitPos' in cached and cached['waitPos'] != wait_pos:
-        wait_pos = cached['waitPos']
-        write_stdout("- Current Waitlist Position: {}/{}\n".format(wait_pos, queue_length))
+        write_stdout('\r' + new_status_history)
+
+    if wait_pos is not None:
+        write_stdout("\r< Current Waitlist Position: {} / {} >".format(wait_pos, queue_length))
+    if wait_pos == 0:
+        write_stdout("\r")
 
     if wait_pos is not None and wait_pos == 0 and task_name is not None:
         try:
             detail = retrieve_odps_detail(job_id, token, task_name)
             log_id = detail['mapReduce']['jobs'][0]['tasks'][0]['instances'][0]['logId']
-            write_stdout("- Log ID: {}\n".format(log_id))
+            if len(log_id) > 0: break
         except (KeyError, IndexError) as e:
             pass
     time.sleep(1)
-write_stdout("")
+write_stdout("\n\nTask Name = {}\nLog ID = {}\n".format(task_name, log_id))
 
 #######################################
 #  Connect to Remote Stdout & Stderr

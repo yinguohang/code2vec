@@ -41,11 +41,11 @@ class Code2VecModel:
     def build_embedding_layer(self, start, path, end, opt):
         with tf.variable_scope('embedding'):
             node_embedding = tf.get_variable("node_embedding",
-                                             [opt.node_cnt, opt.node_embedding_size],
+                                             [opt.node_cnt, opt.embedding_node_size],
                                              initializer=tf.contrib.layers.xavier_initializer(),
                                              dtype=tf.float32)
             path_embedding = tf.get_variable("path_embedding",
-                                             [opt.path_cnt, opt.path_embedding_size],
+                                             [opt.path_cnt, opt.embedding_path_size],
                                              initializer=tf.contrib.layers.xavier_initializer(),
                                              dtype=tf.float32)
 
@@ -64,7 +64,6 @@ class Code2VecModel:
     # Encoding
     def build_encoding_layer(self, inputs, opt):
         with tf.variable_scope('encoding'):
-            bag_size = inputs.get_shape()[1]
             context_size = inputs.get_shape()[2]
 
             # FC (1 layer, no activation)
@@ -73,15 +72,16 @@ class Code2VecModel:
                                                rate=opt.dropout_rate,
                                                training=opt.training)
 
-            encoding_fc_weight = tf.get_variable('encoding_fc_weight',
-                                                 [context_size, opt.encode_size],
+            encoding_fc_weight = tf.get_variable('fc_weight',
+                                                 [context_size, opt.encoding_size],
                                                  initializer=tf.contrib.layers.xavier_initializer(),
                                                  dtype=tf.float32)
 
             outputs_flatten = tf.nn.tanh(tf.matmul(inputs_dropout, encoding_fc_weight))
-            self.regularizations['encoding_fc_weight_L2'] = tf.norm(encoding_fc_weight, ord=2) * opt.encoding_layer_penalty_rate
+            self.regularizations['encoding_weight_L2'] = \
+                tf.norm(encoding_fc_weight, ord=2) * opt.encoding_weight_penalty_rate
 
-            outputs = tf.reshape(outputs_flatten, [-1, bag_size, opt.encode_size])
+            outputs = tf.reshape(outputs_flatten, [-1, opt.embedding_bag_size, opt.encoding_size])
 
             if opt.training:
                 tf.logging.info("Building Code2VecModel - {:16s}: ({}) -> ({})"
@@ -91,16 +91,16 @@ class Code2VecModel:
     # Attention layer
     def build_attention_layer(self, inputs, mask, opt):
         with tf.variable_scope("attention"):
-            bag_size = inputs.get_shape()[1]
-            attention_dimension = opt.attention_layer_dimension
+            bag_size = opt.embedding_bag_size
+            attention_dimension = opt.attention_dimension_size
 
-            inputs_flatten = tf.reshape(inputs, [-1, opt.encode_size])
+            inputs_flatten = tf.reshape(inputs, [-1, opt.encoding_size])
             inputs_dropout = tf.layers.dropout(inputs_flatten,
                                                rate=opt.dropout_rate,
                                                training=opt.training)
 
             attention_weight = tf.get_variable('attention_weight',
-                                               [attention_dimension, opt.encode_size],
+                                               [attention_dimension, opt.encoding_size],
                                                initializer=tf.contrib.layers.xavier_initializer(),
                                                dtype=tf.float32)
 
@@ -119,7 +119,7 @@ class Code2VecModel:
 
             context_weights_softmax = tf.nn.softmax(context_weights_masked, 1)
 
-            context_weights_repeat = tf.tile(context_weights_softmax, [1, 1, opt.encode_size])
+            context_weights_repeat = tf.tile(context_weights_softmax, [1, 1, opt.encoding_size])
 
             context_mul = tf.multiply(inputs, context_weights_repeat)
 
@@ -129,7 +129,8 @@ class Code2VecModel:
             orthogonal_penalty = tf.square(tf.norm(tf.matmul(attention_weight, tf.transpose(attention_weight))
                                                    - tf.eye(attention_dimension), ord='fro', axis=(0, 1)))
 
-            self.regularizations['attention_orthogonal_penalty'] = orthogonal_penalty * opt.attention_layer_penalty_rate
+            self.regularizations['attention_orthogonal_penalty'] = \
+                orthogonal_penalty * opt.attention_weight_penalty_rate
 
             if opt.training:
                 tf.logging.info("Building Code2VecModel - {:16s}: ({}) -> ({})"
@@ -137,61 +138,71 @@ class Code2VecModel:
             return context_sum
 
     # Regression
-    def build_regression_layer(self, inputs, original_features, opt):
+    def build_regression_layer(self, vectors, features, opt):
         with tf.variable_scope("regression"):
+            feature_count = features.get_shape()[1]
             output_size = opt.classification if opt.classification > 0 else 1
 
-            fully_connected_weight_1 = tf.get_variable("fully_connected_weight_1",
-                                                      [inputs.get_shape()[1], opt.concat_code2vec_size],
-                                                      initializer=tf.contrib.layers.xavier_initializer(),
-                                                      dtype=tf.float32
-                                                      )
+            # # FC Within Vectors
+            # vec_fc_weight = tf.get_variable("vec_fc_weight",
+            #                                 [opt.encoding_size, opt.regression_concat_vec_size],
+            #                                 initializer=tf.contrib.layers.xavier_initializer(),
+            #                                 dtype=tf.float32)
+            #
+            # vec_fc_bias = tf.get_variable("vec_fc_bias",
+            #                               [opt.regression_concat_vec_size],
+            #                               initializer=tf.contrib.layers.xavier_initializer(),
+            #                               dtype=tf.float32)
+            #
+            # self.regularizations['regression_vec_weight_L2'] = \
+            #     tf.norm(vec_fc_weight, ord=2) * opt.regression_vec_weight_penalty_rate
+            #
+            # vec_fc_output = tf.matmul(vectors, vec_fc_weight) + vec_fc_bias
 
-            fully_connected_bias_1 = tf.get_variable("fully_connected_bias_1",
-                                                     [opt.concat_code2vec_size],
-                                                     initializer=tf.contrib.layers.xavier_initializer(),
-                                                     dtype=tf.float32
-                                                     )
+            vec_fc_output = vectors
 
-            fully_connected_weight_2 = tf.get_variable("fully_connected_weight_2",
-                                                       [original_features.get_shape()[1], opt.concat_original_feature_size],
-                                                       initializer=tf.contrib.layers.xavier_initializer(),
-                                                       dtype=tf.float32
-                                                       )
+            # FC Within Features
+            feature_fc_weight = tf.get_variable("feature_fc_weight",
+                                                [feature_count, opt.regression_concat_feature_size],
+                                                initializer=tf.contrib.layers.xavier_initializer(),
+                                                dtype=tf.float32)
 
-            fully_connected_bias_2 = tf.get_variable("fully_connected_bias_2",
-                                                     [opt.concat_original_feature_size],
-                                                     initializer=tf.contrib.layers.xavier_initializer(),
-                                                     dtype=tf.float32
-                                                     )
+            feature_fc_bias = tf.get_variable("feature_fc_bias",
+                                              [opt.regression_concat_feature_size],
+                                              initializer=tf.contrib.layers.xavier_initializer(),
+                                              dtype=tf.float32)
 
-            concat_word2vec = tf.nn.relu(tf.matmul(inputs, fully_connected_weight_1) + fully_connected_bias_1)
-            concat_original_feature = tf.nn.relu(tf.matmul(original_features, fully_connected_weight_2) + fully_connected_bias_2)
+            self.regularizations['regression_feature_weight_L2'] = \
+                tf.norm(feature_fc_weight, ord=2) * opt.regression_feature_weight_penalty_rate
 
-            concat_layer = tf.concat([concat_word2vec, concat_original_feature], 1)
-            concat_size = concat_layer.get_shape()[1]
+            feature_fc_output = tf.nn.relu(tf.matmul(features, feature_fc_weight) + feature_fc_bias)
 
-            dropout_inputs_1 = tf.layers.dropout(concat_layer,
-                                                 rate=opt.dropout_rate,
-                                                 training=opt.training)
+            # Concatenation
+            concat_inputs = tf.concat([vec_fc_output, feature_fc_output], 1)
+
+            concat_size = concat_inputs.get_shape()[1]
+
+            concat_inputs_dropout = tf.layers.dropout(concat_inputs,
+                                                      rate=opt.dropout_rate,
+                                                      training=opt.training)
 
             regression_weight_1 = tf.get_variable("regression_weight_1",
-                                                  [concat_size, opt.reduced_size],
+                                                  [concat_size, opt.regression_hidden_layer_size],
                                                   initializer=tf.contrib.layers.xavier_initializer(),
                                                   dtype=tf.float32)
             regression_bias_1 = tf.get_variable("regression_bias_1",
-                                                [opt.reduced_size],
+                                                [opt.regression_hidden_layer_size],
                                                 initializer=tf.zeros_initializer(),
                                                 dtype=tf.float32)
 
-            outputs_1 = tf.nn.relu(tf.matmul(dropout_inputs_1, regression_weight_1) + regression_bias_1)
+            outputs_1 = tf.nn.relu(tf.matmul(concat_inputs_dropout, regression_weight_1) + regression_bias_1)
 
-            dropout_inputs_2 = tf.layers.dropout(outputs_1,
-                                                 rate=opt.dropout_rate,
-                                                 training=opt.training)
+            hidden_inputs_dropout = tf.layers.dropout(outputs_1,
+                                                      rate=opt.dropout_rate,
+                                                      training=opt.training)
 
             regression_weight_2 = tf.get_variable("regression_weight_2",
-                                                  [opt.reduced_size, output_size],
+                                                  [opt.regression_hidden_layer_size, opt.regression_hidden_layer_size],
                                                   initializer=tf.contrib.layers.xavier_initializer(),
                                                   dtype=tf.float32)
             regression_bias_2 = tf.get_variable("regression_bias_2",
@@ -199,12 +210,15 @@ class Code2VecModel:
                                                 initializer=tf.zeros_initializer(),
                                                 dtype=tf.float32)
 
-            outputs = tf.matmul(dropout_inputs_2, regression_weight_2) + regression_bias_2
+            outputs = tf.matmul(hidden_inputs_dropout, regression_weight_2) + regression_bias_2
 
-            self.regularizations['regression_L2_1'] = tf.norm(regression_weight_1, ord=2) * opt.regression_layer_penalty_rate
-            self.regularizations['regression_L2_2'] = tf.norm(regression_weight_2, ord=2) * opt.regression_layer_penalty_rate
+            self.regularizations['regression_L2_1'] = \
+                tf.norm(regression_weight_1, ord=2) * opt.regression_layer_penalty_rate
+            self.regularizations['regression_L2_2'] = \
+                tf.norm(regression_weight_2, ord=2) * opt.regression_layer_penalty_rate
 
             if opt.training:
-                tf.logging.info("Building Code2VecModel - {:16s}: ({}) -> ({})"
-                                .format("Regression Layer", inputs.get_shape(), outputs.get_shape()))
+                tf.logging.info("Building Code2VecModel - {:16s}: ({}, {}) -> ({})"
+                                .format("Regression Layer", vectors.get_shape(),
+                                        features.get_shape(), outputs.get_shape()))
             return outputs

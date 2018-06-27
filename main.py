@@ -3,6 +3,7 @@
 # 主程序入口
 import os
 import time
+
 try:
     from Queue import PriorityQueue
 except ImportError:
@@ -27,23 +28,31 @@ utils.init_tf_logging(FLAGS.log_path)
 class Option:
     def __init__(self, reader, training=True):
         self.training = training
-        self.node_embedding_size = FLAGS.node_embedding_size
-        self.path_embedding_size = FLAGS.path_embedding_size
-        self.encode_size = FLAGS.encode_size
         self.dropout_rate = FLAGS.dropout_rate
         self.classification = FLAGS.classification
-        self.attention_layer_dimension = FLAGS.attention_layer_dimension
-        self.encoding_layer_penalty_rate = FLAGS.encoding_layer_penalty_rate
-        self.attention_layer_penalty_rate = FLAGS.attention_layer_penalty_rate
-        self.regression_layer_penalty_rate = FLAGS.regression_layer_penalty_rate
+
         self.node_cnt = reader.node_converter.cnt + 1
         self.path_cnt = reader.path_converter.cnt + 1
-        self.concat_code2vec_size = FLAGS.concat_code2vec_size
-        self.concat_original_feature_size = FLAGS.concat_original_feature_size
-        self.reduced_size = FLAGS.reduced_size
+        self.embedding_bag_size = FLAGS.embedding_bag_size
+        self.embedding_node_size = FLAGS.embedding_node_size
+        self.embedding_path_size = FLAGS.embedding_path_size
+
+        self.encoding_size = FLAGS.encoding_size
+        self.encoding_weight_penalty_rate = FLAGS.encoding_weight_penalty_rate
+
+        self.attention_dimension_size = FLAGS.attention_dimension_size
+        self.attention_weight_penalty_rate = FLAGS.attention_weight_penalty_rate
+
+        self.regression_concat_vec_size = FLAGS.regression_concat_vec_size
+        self.regression_concat_feature_size = FLAGS.regression_concat_feature_size
+        self.regression_hidden_layer_size = FLAGS.regression_hidden_layer_size
+        self.regression_vec_weight_penalty_rate = FLAGS.regression_vec_weight_penalty_rate
+        self.regression_feature_weight_penalty_rate = FLAGS.regression_feature_weight_penalty_rate
+        self.regression_layer_penalty_rate = FLAGS.regression_layer_penalty_rate
+
 
 def train():
-    reader = DataReader(os.path.join(FLAGS.data_path, FLAGS.data_set), FLAGS.context_bag_size)
+    reader = DataReader(os.path.join(FLAGS.data_path, FLAGS.data_set), FLAGS.embedding_bag_size)
 
     train_data = reader.train_dataset
     eval_data = reader.dev_dataset
