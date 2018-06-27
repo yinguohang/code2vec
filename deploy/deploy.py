@@ -67,13 +67,17 @@ def task_launch_tar():
                                     + "git ls-tree --full-tree -r --name-only HEAD | "
                                     + "tar -czvf \"" + tar_ball_location + "\" -T -"],
                                    stdout=subprocess.PIPE)
-    tar_printer_thread = threading.Thread(target=forward_fd, args=(tar_process.stdout, sys.stdout, None,
-                                                                   lambda: tar_process.poll() is None))
+    tar_stdout_thread = threading.Thread(target=forward_fd, args=(tar_process.stdout, sys.stdout, None,
+                                                                  lambda: tar_process.poll() is None))
+    tar_stderr_thread = threading.Thread(target=forward_fd, args=(tar_process.stderr, sys.stdout, None,
+                                                                  lambda: tar_process.poll() is None))
 
-    tar_printer_thread.start()
+    tar_stdout_thread.start()
+    tar_stderr_thread.start()
 
     tar_process.wait()
-    tar_printer_thread.join()
+    tar_stdout_thread.join()
+    tar_stderr_thread.join()
     time.sleep(0.5)
 
     write_stdout("The tar ball is stored at " + tar_ball_location + "\n")
@@ -115,7 +119,7 @@ def task_launch_odps():
             output = output.strip()
             if output.startswith("ID = "):
                 instance_id = output[5:]
-            if output.startswith("http://logview.odps.aliyun-inc.com:8080"):
+            if output.find("http://logview.odps.aliyun-inc.com:8080") != -1:
                 job_url = output
                 odps_process.terminate()
             if output.startswith("FAILED"):
@@ -259,7 +263,8 @@ write_stdout("\nTask is now running. Connecting to remote console...\n")
 
 stdout, stderr, status = "", "", "Running"
 while status == "Running":
-    status = retrieve_odps_status(job_id, token)['status']
+    cached = retrieve_odps_status(job_id, token)
+    status = cached['status'] if len(cached.keys()) > 0 else "Terminated"
     stdout, new_stdout = \
         combine_overlap_string(stdout, retrieve_odps_log(job_id, token, log_id, log_type="Stdout"))
     write_stdout(new_stdout)
