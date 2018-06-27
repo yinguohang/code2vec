@@ -54,8 +54,8 @@ def forward_fd(process_fd, sys_fd, handler=None, stop=lambda: False):
 
 
 def get_odps_url(job_id, token, task):
-    return "http://service-corp.odps.aliyun-inc.com/api/projects/kelude_open_dw/instances/{}" \
-           + "?{}&authorization_token={}".format(job_id, task, token)
+    return "http://service-corp.odps.aliyun-inc.com/api/projects/kelude_open_dw/instances/" \
+           + "{}?{}&authorization_token={}".format(job_id, task, token)
 
 
 def send_odps_request(job_id, token, task, is_json=True):
@@ -63,7 +63,12 @@ def send_odps_request(job_id, token, task, is_json=True):
         'odps-proxy-url': get_odps_url(job_id, token, task)
     })
     if is_json:
-        return json.loads(r.text)
+        try:
+            return json.loads(r.text)
+        except ValueError:
+            write_stderr(r.text)
+            write_stderr("Parse JSON failed\n")
+            return {}
     return r.text
 
 

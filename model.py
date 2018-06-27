@@ -202,7 +202,7 @@ class Code2VecModel:
                                                       training=opt.training)
 
             regression_weight_2 = tf.get_variable("regression_weight_2",
-                                                  [opt.regression_hidden_layer_size, opt.regression_hidden_layer_size],
+                                                  [opt.regression_hidden_layer_size, output_size],
                                                   initializer=tf.contrib.layers.xavier_initializer(),
                                                   dtype=tf.float32)
             regression_bias_2 = tf.get_variable("regression_bias_2",

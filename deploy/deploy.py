@@ -237,9 +237,9 @@ while True:
         write_stdout('\r' + new_status_history)
 
     if wait_pos is not None:
-        write_stdout("\r< Current Waitlist Position: {} / {} >".format(wait_pos, queue_length))
+        write_stdout('\r< Current Waitlist Position: {} / {} >'.format(wait_pos, queue_length))
     if wait_pos == 0:
-        write_stdout("\r")
+        write_stdout('\r' + ' ' * 50)
 
     if wait_pos is not None and wait_pos == 0 and task_name is not None:
         try:
@@ -250,7 +250,7 @@ while True:
         except (KeyError, IndexError) as e:
             pass
     time.sleep(1)
-write_stdout("\n\nTask Name = {}\nLog ID = {}\n".format(task_name, log_id))
+write_stdout("\nTask Name = {}\nLog ID = {}\n".format(task_name, log_id))
 
 #######################################
 #  Connect to Remote Stdout & Stderr

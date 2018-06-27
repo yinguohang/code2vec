@@ -107,15 +107,16 @@ def train():
                     stable_min_loss = 0
                 min_eval_loss.put(max(k, -eval_loss))
 
-            # tf.logging.info(
-            #     'Epoch %2d: train-loss: %.5f (acc=%.2f), val-loss: %.5f (acc=%.2f), min-loss: %.5f, cost-time: %.4f s'
-            #     % (i + 1, train_loss, train_acc, eval_loss, eval_acc, -np.mean(min_eval_loss.queue),
-            #        time.time() - start_time))
-
-            tf.logging.info(
-                'Epoch %2d: train-loss: %.5f, val-reg: %.5f, val-loss: %.5f, min-loss: %.5f, cost: %.4f s'
-                % (i + 1, train_loss, eval_reg_loss, eval_loss, -np.mean(min_eval_loss.queue),
-                   time.time() - start_time))
+            if opt.classification > 0:
+                tf.logging.info(
+                    'Epoch %2d: train-loss: %.5f (acc=%.2f), val-loss: %.5f (acc=%.2f), min-loss: %.5f, cost: %.4f s'
+                    % (i + 1, train_loss, train_acc, eval_loss, eval_acc, float(-np.mean(min_eval_loss.queue)),
+                       time.time() - start_time))
+            else:
+                tf.logging.info(
+                    'Epoch %2d: train-loss: %.5f, val-reg: %.5f, val-loss: %.5f, min-loss: %.5f, cost: %.4f s'
+                    % (i + 1, train_loss, eval_reg_loss, eval_loss, float(-np.mean(min_eval_loss.queue)),
+                       time.time() - start_time))
 
             if stable_min_loss >= 5 and i > 50: break
 
@@ -142,7 +143,8 @@ def evaluate(sess, model, batch_data, batch_init_op, op=None):
 
 
 def main(_):
-    tf.logging.info(str(FLAGS.__flags))
+    for flag in sorted(FLAGS.__flags):
+        tf.logging.info("FLAG OPTION: [{} = {}]".format(flag, str(FLAGS.__flags[flag])))
     train()
 
 

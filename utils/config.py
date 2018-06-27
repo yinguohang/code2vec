@@ -37,7 +37,7 @@ def init():
     flags.DEFINE_string("optimizer", "adam", "Selected optimizer")
 
     if flags.FLAGS.optimizer == "adam":
-        flags.DEFINE_string("learning_rate", 0.0001, "Learning rate")
+        flags.DEFINE_string("learning_rate", 0.0005, "Learning rate")
     elif flags.FLAGS.optimizer == "adadelta":
         flags.DEFINE_string("learning_rate", 1.0, "Learning rate")
 
@@ -89,16 +89,15 @@ def init():
     ############################
 
     # Regression Layer Structure Parameter
-    flags.DEFINE_integer("regression_concat_vec_size", 100, "code2vec size when concating")
+    flags.DEFINE_integer("regression_concat_vec_size", 100, "vector size when concatenating")
 
-    flags.DEFINE_integer("regression_concat_feature_size", 50, "original feature size when concating")
+    flags.DEFINE_integer("regression_concat_feature_size", 30, "feature size when concatenating")
 
-    flags.DEFINE_integer("regression_hidden_layer_size", 50, "Hidden units between concat layer and output layer")
+    flags.DEFINE_integer("regression_hidden_layer_size", 150, "Hidden units between concat layer and output layer")
 
     # Regression Layer Penalty Parameter
     flags.DEFINE_float("regression_vec_weight_penalty_rate", 0.03, "")
 
-    flags.DEFINE_float("regression_feature_weight_penalty_rate", 0.02, "")
+    flags.DEFINE_float("regression_feature_weight_penalty_rate", 0.05, "")
 
-    flags.DEFINE_float("regression_layer_penalty_rate", 0.03, "Regression layer penalty rate")
-
+    flags.DEFINE_float("regression_layer_penalty_rate", 0.02, "Regression layer penalty rate")
