@@ -50,6 +50,8 @@ class Option:
         self.regression_feature_weight_penalty_rate = FLAGS.regression_feature_weight_penalty_rate
         self.regression_layer_penalty_rate = FLAGS.regression_layer_penalty_rate
 
+        self.fusion_penalty_rate = FLAGS.fusion_penalty_rate
+
 
 def train():
     reader = DataReader(os.path.join(FLAGS.data_path, FLAGS.data_set), FLAGS.embedding_bag_size)
@@ -149,6 +151,6 @@ def main(_):
 
 
 if __name__ == "__main__":
-    np.random.seed(666)
-    tf.set_random_seed(666)
+    np.random.seed(123)
+    tf.set_random_seed(123)
     tf.app.run()

@@ -12,7 +12,7 @@ base_path = {
 data_set = {
     'PAI': 'paths-18728',
     'DARWIN': 'paths-1000',
-    'WINDOWS': 'paths-1000'
+    'WINDOWS': 'paths-18728'
 }
 
 
@@ -101,3 +101,5 @@ def init():
     flags.DEFINE_float("regression_feature_weight_penalty_rate", 0.05, "")
 
     flags.DEFINE_float("regression_layer_penalty_rate", 0.02, "Regression layer penalty rate")
+
+    flags.DEFINE_integer("fusion_penalty_rate", 0.02, "Fusion penalty rate")
