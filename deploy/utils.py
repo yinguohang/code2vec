@@ -45,7 +45,7 @@ def die(message):
 def forward_fd(process_fd, sys_fd, handler=None, stop=lambda: False):
     buf = []
     while not stop():
-        buf.append(process_fd.read(1).decode())
+        buf.append(process_fd.read(1).decode(encoding=sys.getdefaultencoding()))
         if handler is not None:
             handler(buf)
         if buf[-1] in ['\n', '>']:
