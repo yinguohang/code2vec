@@ -136,10 +136,10 @@ def task_launch_odps():
     odps_stdout_thread.start()
 
     odps_process.wait()
-    odps_stderr_thread.join()
-    odps_stdout_thread.join()
+    # odps_stderr_thread.join()
+    # odps_stdout_thread.join()
 
-    os.remove(tar_ball_location_pai)
+    # os.remove(tar_ball_location_pai)
 
 
 ###################################

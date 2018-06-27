@@ -140,6 +140,7 @@ class Code2VecModel:
     # Regression
     def build_regression_layer(self, vectors, features, opt):
         with tf.variable_scope("regression"):
+            vector_count = vectors.get_shape()[1]
             feature_count = features.get_shape()[1]
             output_size = opt.classification if opt.classification > 0 else 1
 
@@ -178,44 +179,56 @@ class Code2VecModel:
             feature_fc_output = tf.nn.relu(tf.matmul(features, feature_fc_weight) + feature_fc_bias)
 
             # Concatenation
-            concat_inputs = tf.concat([vec_fc_output, feature_fc_output], 1)
+            # concat_inputs = tf.concat([vec_fc_output, feature_fc_output], 1)
+            #
+            # concat_size = concat_inputs.get_shape()[1]
+            #
+            # concat_inputs_dropout = tf.layers.dropout(concat_inputs,
+            #                                           rate=opt.dropout_rate,
+            #                                           training=opt.training)
 
-            concat_size = concat_inputs.get_shape()[1]
+            fusion_weights = tf.get_variable("fusion_weights",
+                                             [opt.regression_concat_feature_size, vector_count],
+                                             initializer=tf.contrib.layers.xavier_initializer(),
+                                             dtype=tf.float32
+                                             )
 
-            concat_inputs_dropout = tf.layers.dropout(concat_inputs,
-                                                      rate=opt.dropout_rate,
-                                                      training=opt.training)
+            fusion_alpha = tf.nn.softmax(tf.multiply(tf.matmul(feature_fc_output, fusion_weights), vectors))
 
-            regression_weight_1 = tf.get_variable("regression_weight_1",
-                                                  [concat_size, opt.regression_hidden_layer_size],
-                                                  initializer=tf.contrib.layers.xavier_initializer(),
-                                                  dtype=tf.float32)
-            regression_bias_1 = tf.get_variable("regression_bias_1",
-                                                [opt.regression_hidden_layer_size],
-                                                initializer=tf.zeros_initializer(),
-                                                dtype=tf.float32)
-
-            outputs_1 = tf.nn.relu(tf.matmul(concat_inputs_dropout, regression_weight_1) + regression_bias_1)
-
-            hidden_inputs_dropout = tf.layers.dropout(outputs_1,
-                                                      rate=opt.dropout_rate,
-                                                      training=opt.training)
-
-            regression_weight_2 = tf.get_variable("regression_weight_2",
-                                                  [opt.regression_hidden_layer_size, output_size],
-                                                  initializer=tf.contrib.layers.xavier_initializer(),
-                                                  dtype=tf.float32)
-            regression_bias_2 = tf.get_variable("regression_bias_2",
-                                                [output_size],
-                                                initializer=tf.zeros_initializer(),
-                                                dtype=tf.float32)
-
-            outputs = tf.matmul(hidden_inputs_dropout, regression_weight_2) + regression_bias_2
-
+            outputs = tf.reduce_sum(tf.multiply(fusion_alpha, vectors), 1)
             self.regularizations['regression_L2_1'] = \
-                tf.norm(regression_weight_1, ord=2) * opt.regression_layer_penalty_rate
-            self.regularizations['regression_L2_2'] = \
-                tf.norm(regression_weight_2, ord=2) * opt.regression_layer_penalty_rate
+                tf.norm(fusion_weights, ord=2) * opt.fusion_penalty_rate
+
+            # regression_weight_1 = tf.get_variable("regression_weight_1",
+            #                                       [concat_size, opt.regression_hidden_layer_size],
+            #                                       initializer=tf.contrib.layers.xavier_initializer(),
+            #                                       dtype=tf.float32)
+            # regression_bias_1 = tf.get_variable("regression_bias_1",
+            #                                     [opt.regression_hidden_layer_size],
+            #                                     initializer=tf.zeros_initializer(),
+            #                                     dtype=tf.float32)
+            #
+            # outputs_1 = tf.nn.relu(tf.matmul(concat_inputs_dropout, regression_weight_1) + regression_bias_1)
+            #
+            # hidden_inputs_dropout = tf.layers.dropout(outputs_1,
+            #                                           rate=opt.dropout_rate,
+            #                                           training=opt.training)
+            #
+            # regression_weight_2 = tf.get_variable("regression_weight_2",
+            #                                       [opt.regression_hidden_layer_size, output_size],
+            #                                       initializer=tf.contrib.layers.xavier_initializer(),
+            #                                       dtype=tf.float32)
+            # regression_bias_2 = tf.get_variable("regression_bias_2",
+            #                                     [output_size],
+            #                                     initializer=tf.zeros_initializer(),
+            #                                     dtype=tf.float32)
+            #
+            # outputs = tf.matmul(hidden_inputs_dropout, regression_weight_2) + regression_bias_2
+            #
+            # self.regularizations['regression_L2_1'] = \
+            #     tf.norm(regression_weight_1, ord=2) * opt.regression_layer_penalty_rate
+            # self.regularizations['regression_L2_2'] = \
+            #     tf.norm(regression_weight_2, ord=2) * opt.regression_layer_penalty_rate
 
             if opt.training:
                 tf.logging.info("Building Code2VecModel - {:16s}: ({}, {}) -> ({})"

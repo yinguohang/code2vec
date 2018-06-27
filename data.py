@@ -13,11 +13,13 @@ class Converter:
 
     def load(self, name):
         with tf.gfile.GFile(name, "r") as f:
-            for line in f.readlines():
+            lines = f.readlines()
+            for line in lines:
                 line = line.strip()
                 temp = line.split(",")
                 self.names.append(temp[1])
                 self.name2index[temp[1]] = int(temp[0])
+            tf.logging.info("Load %d lines from %s" % (len(lines), name))
             self.cnt = len(self.names)
 
     def get_index(self, s):

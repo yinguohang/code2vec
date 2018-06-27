@@ -50,6 +50,8 @@ class Option:
         self.regression_feature_weight_penalty_rate = FLAGS.regression_feature_weight_penalty_rate
         self.regression_layer_penalty_rate = FLAGS.regression_layer_penalty_rate
 
+        self.fusion_penalty_rate = FLAGS.fusion_penalty_rate
+
 
 def train():
     reader = DataReader(os.path.join(FLAGS.data_path, FLAGS.data_set), FLAGS.embedding_bag_size)
