@@ -118,6 +118,8 @@ def task_launch_odps():
             if output.startswith("http://logview.odps.aliyun-inc.com:8080"):
                 job_url = output
                 odps_process.terminate()
+            if output.startswith("FAILED"):
+                die("Pai Job Deployment Failed")
 
     odps_stderr_thread = threading.Thread(target=forward_fd,
                                           args=(odps_process.stderr, sys.stdout, odps_output_handler,
@@ -194,6 +196,12 @@ if instance_id is None or job_url is None:
 else:
     write_stdout("ID = {}\n".format(instance_id))
     write_stdout("{}\n".format(job_url))
+
+if instance_id is None:
+    die("Cannot retrieve instance ID")
+
+if job_url is None:
+    die("Cannot retrieve job url")
 
 ###################################
 #  Retrieve Job ID

@@ -37,6 +37,11 @@ def write_stderr(content):
     write_fd(sys.stderr, '\x1b[1;31m' + content + '\x1b[0m')
 
 
+def die(message):
+    write_stdout(message)
+    exit(-1)
+
+
 def forward_fd(process_fd, sys_fd, handler=None, stop=lambda: False):
     buf = []
     while not stop():
