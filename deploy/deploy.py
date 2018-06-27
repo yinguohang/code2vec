@@ -142,7 +142,7 @@ def task_launch_odps():
 #  Create Job Abort Handler
 ###################################
 def task_terminate_handler():
-    def abort_signal_handler(signal, handler):
+    def abort_signal_handler(_, __):
         global instance_id, odps_process
 
         write_stderr("\nNow killing PAI instance...\n")
@@ -245,7 +245,8 @@ while True:
         try:
             detail = retrieve_odps_detail(job_id, token, task_name)
             log_id = detail['mapReduce']['jobs'][0]['tasks'][0]['instances'][0]['logId']
-            if len(log_id) > 0: break
+            if len(log_id) > 0:
+                break
         except (KeyError, IndexError) as e:
             pass
     time.sleep(1)

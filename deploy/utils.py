@@ -38,7 +38,7 @@ def write_stderr(content):
 
 
 def die(message):
-    write_stdout(message)
+    write_stderr('\n' + message + '\n')
     exit(-1)
 
 
@@ -54,8 +54,8 @@ def forward_fd(process_fd, sys_fd, handler=None, stop=lambda: False):
 
 
 def get_odps_url(job_id, token, task):
-    return "http://service-corp.odps.aliyun-inc.com/api/projects/kelude_open_dw/instances/{}?{}&authorization_token={}" \
-        .format(job_id, task, token)
+    return "http://service-corp.odps.aliyun-inc.com/api/projects/kelude_open_dw/instances/{}" \
+           + "?{}&authorization_token={}".format(job_id, task, token)
 
 
 def send_odps_request(job_id, token, task, is_json=True):
@@ -85,7 +85,7 @@ def format_odps_status_history(status):
     if 'subStatusHistory' not in status:
         return ""
     for sub_status in status['subStatusHistory']:
-        formatted_output += "{:%Y-%m-%d %H:%M:%S} - {}\n"\
+        formatted_output += "{:%Y-%m-%d %H:%M:%S} - {}\n" \
             .format(parse(sub_status['start_time']), sub_status['description'])
     return formatted_output
 
