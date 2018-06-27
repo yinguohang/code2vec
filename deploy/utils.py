@@ -5,6 +5,7 @@ import threading
 
 import requests
 import tensorflow as tf
+import xmltodict
 from dateutil.parser import parse
 from tensorflow.python.framework.errors_impl import UnimplementedError, NotFoundError
 
@@ -58,16 +59,26 @@ def get_odps_url(job_id, token, task):
            + "{}?{}&authorization_token={}".format(job_id, task, token)
 
 
-def send_odps_request(job_id, token, task, is_json=True):
+def send_odps_request(job_id, token, task, content_type=None):
     r = requests.get("http://logview.odps.aliyun-inc.com:8080/proxy", headers={
         'odps-proxy-url': get_odps_url(job_id, token, task)
     })
-    if is_json:
+    if content_type is None:
+        content_type = r.headers['content-type']
+
+    if content_type in ["application/json", "json"]:
         try:
             return json.loads(r.text)
         except ValueError:
             write_stderr(r.text)
             write_stderr("Parse JSON failed\n")
+            return {}
+    if content_type in ["application/xml", "xml"]:
+        try:
+            return xmltodict.parse(r.text)
+        except ValueError:
+            write_stderr(r.text)
+            write_stderr("Parse XML failed\n")
             return {}
     return r.text
 
@@ -77,7 +88,17 @@ def combine_overlap_string(old, new):
     return old + new, new
 
 
+def assert_odps_is_running(job_id, token, status="Running"):
+    s = retrieve_odps_status(job_id, token)
+    if s != status:
+        die("Pai job has been ended [{}]".format(s))
+
+
 def retrieve_odps_status(job_id, token):
+    return send_odps_request(job_id, token, "")['Instance']['Status']
+
+
+def retrieve_odps_cached(job_id, token):
     return send_odps_request(job_id, token, "cached")
 
 
@@ -96,5 +117,5 @@ def format_odps_status_history(status):
 
 
 def retrieve_odps_log(job_id, token, log_id, log_type="Stdout"):
-    log = send_odps_request(job_id, token, "log&logtype={}&size=10000&id={}".format(log_type, log_id), is_json=False)
+    log = send_odps_request(job_id, token, "log&logtype={}&size=10000&id={}".format(log_type, log_id))
     return log

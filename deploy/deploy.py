@@ -31,6 +31,7 @@ A script that helps you to automatically upload PAI tasks.
 * You may use optional flag --suppress_stderr to hide messages from stderr.
 
 """, formatter_class=argparse.RawTextHelpFormatter)
+
 parser.add_argument('odps_path', help='Path to odps console')
 parser.add_argument('--instance_id', default=None, help='An already existed instance id')
 parser.add_argument('--job_url', default=None, help='An already existed job url')
@@ -119,7 +120,7 @@ def task_launch_odps():
             output = output.strip()
             if output.startswith("ID = "):
                 instance_id = output[5:]
-            if output.find("http://logview.odps.aliyun-inc.com:8080") != -1:
+            if output.startswith("http://logview.odps.aliyun-inc.com:8080"):
                 job_url = output
                 odps_process.terminate()
             if output.startswith("FAILED"):
@@ -209,6 +210,7 @@ if instance_id is None:
 if job_url is None:
     die("Cannot retrieve job url")
 
+
 ###################################
 #  Retrieve Job ID
 ###################################
@@ -221,16 +223,19 @@ token = query['token'][0].strip()
 write_stdout("Job ID = {}\n".format(job_id))
 write_stdout("Token  = {}\n".format(token))
 
+
 ###################################
 #  Retrieve Job Status
 ###################################
 write_stdout("\nNow waiting for the task to start...\n")
 
-status_history = ""
-printed_waitlist = False
 wait_pos, queue_length, task_name, log_id = None, None, None, None
-while True:
-    cached = retrieve_odps_status(job_id, token)
+
+status_history = ""
+
+while log_id is None or len(log_id) == 0:
+    assert_odps_is_running(job_id, token)
+    cached = retrieve_odps_cached(job_id, token)
     if 'taskName' in cached and cached['taskName'] != task_name:
         task_name = cached['taskName']
     if 'waitPos' in cached and cached['waitPos'] != wait_pos:
@@ -251,22 +256,22 @@ while True:
         try:
             detail = retrieve_odps_detail(job_id, token, task_name)
             log_id = detail['mapReduce']['jobs'][0]['tasks'][0]['instances'][0]['logId']
-            if len(log_id) > 0:
-                break
         except (KeyError, IndexError) as e:
             pass
     time.sleep(1)
+
 write_stdout("\nTask Name = {}\nLog ID = {}\n".format(task_name, log_id))
+
 
 #######################################
 #  Connect to Remote Stdout & Stderr
 #######################################
 write_stdout("\nTask is now running. Connecting to remote console...\n")
 
-stdout, stderr, status = "", "", "Running"
-while status == "Running":
-    cached = retrieve_odps_status(job_id, token)
-    status = cached['status'] if len(cached.keys()) > 0 else "Terminated"
+stdout, stderr = "", ""
+
+while True:
+    assert_odps_is_running(job_id, token)
     stdout, new_stdout = \
         combine_overlap_string(stdout, retrieve_odps_log(job_id, token, log_id, log_type="Stdout"))
     write_stdout(new_stdout)
@@ -275,5 +280,3 @@ while status == "Running":
             combine_overlap_string(stderr, retrieve_odps_log(job_id, token, log_id, log_type="Stderr"))
         write_stderr(new_stderr)
     time.sleep(1)
-
-write_stdout("\nFinished\n")

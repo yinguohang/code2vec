@@ -149,6 +149,6 @@ def main(_):
 
 
 if __name__ == "__main__":
-    np.random.seed(123)
-    tf.set_random_seed(123)
+    np.random.seed(666)
+    tf.set_random_seed(666)
     tf.app.run()
