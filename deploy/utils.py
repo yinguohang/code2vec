@@ -66,6 +66,8 @@ def send_odps_request(job_id, token, task, content_type=None):
     if content_type is None:
         content_type = r.headers['content-type']
 
+    if content_type in ["text/plain", "plain", "text"]:
+        return r.text
     if content_type in ["application/json", "json"]:
         try:
             return json.loads(r.text)
