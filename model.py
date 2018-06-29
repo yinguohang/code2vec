@@ -196,7 +196,7 @@ class Code2VecModel:
             fusion_alpha = tf.nn.softmax(tf.multiply(tf.matmul(feature_fc_output, fusion_weights), vectors))
 
             outputs = tf.reduce_sum(tf.multiply(fusion_alpha, vectors), 1)
-            self.regularizations['regression_L2_1'] = \
+            self.regularizations['fusion_penalty'] = \
                 tf.norm(fusion_weights, ord=2) * opt.fusion_penalty_rate
 
             # regression_weight_1 = tf.get_variable("regression_weight_1",
