@@ -11,7 +11,7 @@ base_path = {
 
 data_set = {
     'PAI': 'paths-18728',
-    'DARWIN': 'paths-1000',
+    'DARWIN': 'paths-18728',
     'WINDOWS': 'paths-1000'
 }
 
@@ -89,15 +89,8 @@ def init():
     ############################
 
     # Regression Layer Structure Parameter
-    flags.DEFINE_integer("regression_concat_vec_size", 100, "vector size when concatenating")
-
-    flags.DEFINE_integer("regression_concat_feature_size", 1, "feature size when concatenating")
-
     flags.DEFINE_integer("regression_hidden_layer_size", 250, "Hidden units between concat layer and output layer")
 
     # Regression Layer Penalty Parameter
-    flags.DEFINE_float("regression_vec_weight_penalty_rate", 0.03, "")
-
-    flags.DEFINE_float("regression_feature_weight_penalty_rate", 0.1, "")
 
     flags.DEFINE_float("regression_layer_penalty_rate", 0.03, "Regression layer penalty rate")
