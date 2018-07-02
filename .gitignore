@@ -7,3 +7,7 @@ __pycache__
 *.py[cod]
 *.tar.gz
 
+# Please checkout following files from main branch
+data
+deploy
+pip-requirements.txt
