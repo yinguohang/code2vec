@@ -140,45 +140,9 @@ class Code2VecModel:
     # Regression
     def build_regression_layer(self, vectors, features, opt):
         with tf.variable_scope("regression"):
-            feature_count = features.get_shape()[1]
             output_size = opt.classification if opt.classification > 0 else 1
 
-            # # FC Within Vectors
-            # vec_fc_weight = tf.get_variable("vec_fc_weight",
-            #                                 [opt.encoding_size, opt.regression_concat_vec_size],
-            #                                 initializer=tf.contrib.layers.xavier_initializer(),
-            #                                 dtype=tf.float32)
-            #
-            # vec_fc_bias = tf.get_variable("vec_fc_bias",
-            #                               [opt.regression_concat_vec_size],
-            #                               initializer=tf.contrib.layers.xavier_initializer(),
-            #                               dtype=tf.float32)
-            #
-            # self.regularizations['regression_vec_weight_L2'] = \
-            #     tf.norm(vec_fc_weight, ord=2) * opt.regression_vec_weight_penalty_rate
-            #
-            # vec_fc_output = tf.matmul(vectors, vec_fc_weight) + vec_fc_bias
-
-            vec_fc_output = vectors
-
-            # FC Within Features
-            feature_fc_weight = tf.get_variable("feature_fc_weight",
-                                                [feature_count, opt.regression_concat_feature_size],
-                                                initializer=tf.contrib.layers.xavier_initializer(),
-                                                dtype=tf.float32)
-
-            feature_fc_bias = tf.get_variable("feature_fc_bias",
-                                              [opt.regression_concat_feature_size],
-                                              initializer=tf.contrib.layers.xavier_initializer(),
-                                              dtype=tf.float32)
-
-            self.regularizations['regression_feature_weight_L2'] = \
-                tf.norm(feature_fc_weight, ord=2) * opt.regression_feature_weight_penalty_rate
-
-            feature_fc_output = tf.nn.relu(tf.matmul(features, feature_fc_weight) + feature_fc_bias)
-
-            # Concatenation
-            concat_inputs = tf.concat([vec_fc_output, feature_fc_output], 1)
+            concat_inputs = vectors
 
             concat_size = concat_inputs.get_shape()[1]
 

@@ -118,7 +118,7 @@ def train():
                     % (i + 1, train_loss, eval_reg_loss, eval_loss, float(-np.mean(min_eval_loss.queue)),
                        time.time() - start_time))
 
-            if stable_min_loss >= 5 and i > 50: break
+            if stable_min_loss >= 5 and i >= 49: break
 
 
 def evaluate(sess, model, batch_data, batch_init_op, op=None):
