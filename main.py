@@ -117,10 +117,6 @@ def train():
                     'Epoch %2d: train-loss: %.5f, val-reg: %.5f, val-loss: %.5f, min-loss: %.5f, cost: %.4f s'
                     % (i + 1, train_loss, eval_reg_loss, eval_loss, float(-np.mean(min_eval_loss.queue)),
                        time.time() - start_time))
-                penalty = ""
-                for key in train_model.regularizations:
-                    penalty += "{} = {:.5f}, ".format(key, train_model.regularizations[key].eval())
-                # tf.logging.info(penalty)
 
             if stable_min_loss >= 5 and i >= 49: break
 
