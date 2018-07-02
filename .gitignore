@@ -8,6 +8,7 @@ __pycache__
 *.tar.gz
 
 # Please checkout following files from main branch
+data.py
 data
 deploy
 pip-requirements.txt
