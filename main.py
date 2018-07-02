@@ -43,11 +43,7 @@ class Option:
         self.attention_dimension_size = FLAGS.attention_dimension_size
         self.attention_weight_penalty_rate = FLAGS.attention_weight_penalty_rate
 
-        self.regression_concat_vec_size = FLAGS.regression_concat_vec_size
-        self.regression_concat_feature_size = FLAGS.regression_concat_feature_size
         self.regression_hidden_layer_size = FLAGS.regression_hidden_layer_size
-        self.regression_vec_weight_penalty_rate = FLAGS.regression_vec_weight_penalty_rate
-        self.regression_feature_weight_penalty_rate = FLAGS.regression_feature_weight_penalty_rate
         self.regression_layer_penalty_rate = FLAGS.regression_layer_penalty_rate
 
 

@@ -142,16 +142,14 @@ class Code2VecModel:
         with tf.variable_scope("regression"):
             output_size = opt.classification if opt.classification > 0 else 1
 
-            concat_inputs = vectors
+            inputs_size = vectors.get_shape()[1]
 
-            concat_size = concat_inputs.get_shape()[1]
-
-            concat_inputs_dropout = tf.layers.dropout(concat_inputs,
-                                                      rate=opt.dropout_rate,
-                                                      training=opt.training)
+            inputs_dropout = tf.layers.dropout(vectors,
+                                               rate=opt.dropout_rate,
+                                               training=opt.training)
 
             regression_weight_1 = tf.get_variable("regression_weight_1",
-                                                  [concat_size, opt.regression_hidden_layer_size],
+                                                  [inputs_size, opt.regression_hidden_layer_size],
                                                   initializer=tf.contrib.layers.xavier_initializer(),
                                                   dtype=tf.float32)
             regression_bias_1 = tf.get_variable("regression_bias_1",
@@ -159,7 +157,7 @@ class Code2VecModel:
                                                 initializer=tf.zeros_initializer(),
                                                 dtype=tf.float32)
 
-            outputs_1 = tf.nn.relu(tf.matmul(concat_inputs_dropout, regression_weight_1) + regression_bias_1)
+            outputs_1 = tf.nn.relu(tf.matmul(inputs_dropout, regression_weight_1) + regression_bias_1)
 
             hidden_inputs_dropout = tf.layers.dropout(outputs_1,
                                                       rate=opt.dropout_rate,
