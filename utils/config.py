@@ -12,7 +12,7 @@ base_path = {
 data_set = {
     'PAI': 'paths-18728',
     'DARWIN': 'paths-1000',
-    'WINDOWS': 'paths-18728'
+    'WINDOWS': 'paths-1000'
 }
 
 
@@ -37,7 +37,7 @@ def init():
     flags.DEFINE_string("optimizer", "adam", "Selected optimizer")
 
     if flags.FLAGS.optimizer == "adam":
-        flags.DEFINE_string("learning_rate", 0.0005, "Learning rate")
+        flags.DEFINE_string("learning_rate", 0.0001, "Learning rate")
     elif flags.FLAGS.optimizer == "adadelta":
         flags.DEFINE_string("learning_rate", 1.0, "Learning rate")
 
@@ -58,10 +58,10 @@ def init():
     flags.DEFINE_integer("embedding_bag_size", 100,
                          "The number of context paths in AST to be used in training")
 
-    flags.DEFINE_integer("embedding_node_size", 100,
+    flags.DEFINE_integer("embedding_node_size", 50,
                          "Node (start and end) embedding size")
 
-    flags.DEFINE_integer("embedding_path_size", 250,
+    flags.DEFINE_integer("embedding_path_size", 100,
                          "Path embedding size")
 
     ############################
@@ -69,10 +69,10 @@ def init():
     ############################
 
     # Encoding Layer Structure Parameter
-    flags.DEFINE_integer("encoding_size", 150, "Context encoding size")
+    flags.DEFINE_integer("encoding_size", 50, "Context encoding size")
 
     # Encoding Layer Penalty Parameter
-    flags.DEFINE_float("encoding_weight_penalty_rate", 0.03, "Encoding layer penalty rate")
+    flags.DEFINE_float("encoding_weight_penalty_rate", 0.01, "Encoding layer penalty rate")
 
     ############################
     # Attention Layer
@@ -82,7 +82,7 @@ def init():
     flags.DEFINE_integer("attention_dimension_size", 30, "Dimension of attention layer")
 
     # Attention Layer Penalty Parameter
-    flags.DEFINE_float("attention_weight_penalty_rate", 0.2, "Attention layer penalty rate")
+    flags.DEFINE_float("attention_weight_penalty_rate", 10, "Attention layer penalty rate")
 
     ############################
     # Regression Layer
@@ -102,4 +102,4 @@ def init():
 
     flags.DEFINE_float("regression_layer_penalty_rate", 0.02, "Regression layer penalty rate")
 
-    flags.DEFINE_integer("fusion_penalty_rate", 0.02, "Fusion penalty rate")
+    flags.DEFINE_integer("fusion_penalty_rate", 0.3, "Fusion penalty rate")
