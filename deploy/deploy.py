@@ -124,7 +124,7 @@ def task_launch_odps():
                 job_url = output
                 odps_process.terminate()
             if output.startswith("FAILED"):
-                die("Pai Job Deployment Failed")
+                die("Pai Job Deployment Failed ({})".format(output))
 
     odps_stderr_thread = threading.Thread(target=forward_fd,
                                           args=(odps_process.stderr, sys.stdout, odps_output_handler,
