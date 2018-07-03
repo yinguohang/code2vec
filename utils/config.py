@@ -5,7 +5,7 @@ from . import utils
 
 base_path = {
     'PAI': 'oss://apsalgo-hz/force/codequailty/code2vec',
-    'DARWIN': '/Users/jiangjunfang/Desktop/code2vec',
+    'DARWIN': '/Users/jiangjunfang/Alibaba/projects/code2vec',
     'WINDOWS': 'D:\\ml\\code2vec_tf'
 }
 

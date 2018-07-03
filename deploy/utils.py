@@ -96,9 +96,11 @@ def combine_overlap_string(old, new):
     return old + new, new
 
 
-def assert_odps_is_running(job_id, token, status="Running"):
+def assert_odps_is_running(job_id, token, task_name, status="Running"):
     s = retrieve_odps_status(job_id, token)
     if s != status:
+        if task_name is not None:
+            write_stderr("\nTask result: {}\n".format(retrieve_odps_result(job_id, token, task_name)))
         die("Pai job has been ended [{}]".format(s))
 
 
@@ -110,8 +112,18 @@ def retrieve_odps_cached(job_id, token):
     return send_odps_request(job_id, token, "cached")
 
 
+def retrieve_odps_result(job_id, token, task_name):
+    result = send_odps_request(job_id, token, "result&taskname=" + task_name)
+    return result['Instance']['Tasks']['Task']['Result']['#text']
+
+
 def retrieve_odps_detail(job_id, token, task_name):
     return send_odps_request(job_id, token, "detail&taskname=" + task_name)
+
+
+def retrieve_odps_log(job_id, token, log_id, log_type="Stdout"):
+    log = send_odps_request(job_id, token, "log&logtype={}&size=10000&id={}".format(log_type, log_id))
+    return log
 
 
 def format_odps_status_history(status):
@@ -122,8 +134,3 @@ def format_odps_status_history(status):
         formatted_output += "{:%Y-%m-%d %H:%M:%S} - {}\n" \
             .format(parse(sub_status['start_time']), sub_status['description'])
     return formatted_output
-
-
-def retrieve_odps_log(job_id, token, log_id, log_type="Stdout"):
-    log = send_odps_request(job_id, token, "log&logtype={}&size=10000&id={}".format(log_type, log_id))
-    return log

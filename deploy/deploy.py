@@ -232,7 +232,7 @@ wait_pos, queue_length, task_name, log_id = None, None, None, None
 status_history = ""
 
 while log_id is None or len(log_id) == 0:
-    assert_odps_is_running(job_id, token)
+    assert_odps_is_running(job_id, token, task_name)
     cached = retrieve_odps_cached(job_id, token)
     if 'taskName' in cached and cached['taskName'] != task_name:
         task_name = cached['taskName']
@@ -269,7 +269,7 @@ write_stdout("\nTask is now running. Connecting to remote console...\n")
 stdout, stderr = "", ""
 
 while True:
-    assert_odps_is_running(job_id, token)
+    assert_odps_is_running(job_id, token, task_name)
     stdout, new_stdout = \
         combine_overlap_string(stdout, retrieve_odps_log(job_id, token, log_id, log_type="Stdout"))
     write_stdout(new_stdout)
