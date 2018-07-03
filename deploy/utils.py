@@ -2,6 +2,7 @@ import json
 import platform
 import sys
 import threading
+from collections import OrderedDict
 
 import requests
 import tensorflow as tf
@@ -86,6 +87,11 @@ def send_odps_request(job_id, token, task, content_type=None):
 
 
 def combine_overlap_string(old, new):
+    if type(new) is OrderedDict:
+        write_stderr("Error encountered during printing remote output:\n")
+        for key in new:
+            write_stderr("{}: {}\n".format(key, new[key]))
+        return
     new = new[max(i for i in range(len(new) + 1) if old.endswith(new[:i])):]
     return old + new, new
 
