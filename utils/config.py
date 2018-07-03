@@ -79,10 +79,10 @@ def init():
     ############################
 
     # Attention Layer Structure Parameter
-    flags.DEFINE_integer("attention_dimension_size", 30, "Dimension of attention layer")
+    flags.DEFINE_integer("attention_dimension_size", 50, "Dimension of attention layer")
 
     # Attention Layer Penalty Parameter
-    flags.DEFINE_float("attention_weight_penalty_rate", 10, "Attention layer penalty rate")
+    flags.DEFINE_float("attention_weight_penalty_rate", 0.5, "Attention layer penalty rate")
 
     ############################
     # Regression Layer
