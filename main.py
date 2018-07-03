@@ -120,8 +120,7 @@ def train():
                     % (i + 1, train_loss, eval_reg_loss, eval_loss, float(-np.mean(min_eval_loss.queue)),
                        time.time() - start_time, train_model.regularizations['attention_orthogonal_penalty'].eval(), train_model.regularizations['fusion_penalty'].eval(), train_model.regularizations['encoding_weight_L2'].eval()))
 
-            # if stable_min_loss >= 5 and i >= 49: break
-            if i >= 200: break
+            if stable_min_loss >= 5 and i >= 200: break
 
 def evaluate(sess, model, batch_data, batch_init_op, op=None):
     sess.run(batch_init_op)

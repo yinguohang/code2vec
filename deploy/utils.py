@@ -100,7 +100,9 @@ def assert_odps_is_running(job_id, token, task_name, status="Running"):
     s = retrieve_odps_status(job_id, token)
     if s != status:
         if task_name is not None:
-            write_stderr("\nTask result: {}\n".format(retrieve_odps_result(job_id, token, task_name)))
+            result = retrieve_odps_result(job_id, token, task_name)
+            if result is not None:
+                write_stderr("\nTask result: {}\n".format(result))
         die("Pai job has been ended [{}]".format(s))
 
 
@@ -114,7 +116,8 @@ def retrieve_odps_cached(job_id, token):
 
 def retrieve_odps_result(job_id, token, task_name):
     result = send_odps_request(job_id, token, "result&taskname=" + task_name)
-    return result['Instance']['Tasks']['Task']['Result']['#text']
+    result = result['Instance']['Tasks']['Task']['Result']
+    return result['#text'] if ('#text' in result) else None
 
 
 def retrieve_odps_detail(job_id, token, task_name):
