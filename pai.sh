@@ -1,1 +1,0 @@
-winpty python deploy/deploy.py /D/pai/odps_console/bin/odpscmd.bat
