@@ -5,7 +5,7 @@ from . import utils
 
 base_path = {
     'PAI': 'oss://apsalgo-hz/force/codequailty/code2vec',
-    'DARWIN': '/Users/jiangjunfang/Desktop/code2vec',
+    'DARWIN': '/Users/jiangjunfang/Alibaba/projects/code2vec',
     'WINDOWS': 'D:\\ml\\code2vec_tf'
 }
 
@@ -27,7 +27,7 @@ def init():
     flags.DEFINE_string("data_set", data_set[utils.detect_platform()],
                         "Name of the data set to be used")
 
-    flags.DEFINE_string("data_path", os.path.join(base_path[utils.detect_platform()], 'data'),
+    flags.DEFINE_string("data_path", os.path.join(base_path[utils.detect_platform()], 'data/inner-class'),
                         "Absolute path of data directory")
 
     flags.DEFINE_string("log_path", os.path.join(base_path[utils.detect_platform()], 'log'),
