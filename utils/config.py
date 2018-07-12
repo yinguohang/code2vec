@@ -37,9 +37,9 @@ def init():
     flags.DEFINE_string("optimizer", "adam", "Selected optimizer")
 
     if flags.FLAGS.optimizer == "adam":
-        flags.DEFINE_string("learning_rate", 0.0002, "Learning rate")
+        flags.DEFINE_float("learning_rate", 0.0002, "Learning rate")
     elif flags.FLAGS.optimizer == "adadelta":
-        flags.DEFINE_string("learning_rate", 1.0, "Learning rate")
+        flags.DEFINE_float("learning_rate", 1.0, "Learning rate")
 
     flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 
