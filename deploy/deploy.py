@@ -16,30 +16,34 @@ parser = argparse.ArgumentParser(description="""
 A script that helps you to automatically upload PAI tasks.
 
 * Put the entire deploy folder WITHIN your project directory. The script can be used as
-  > python deploy.py ABS_PATH_TO_ODPSCMD [--suppress_stderr]
+  > python deploy.py [--suppress_stderr] [--job_url JOB_URL]
 
 * Your project should be managed under git, and only files tracked by git will be uploaded to PAI.
   To see which files will be uploaded, run the following command
   > git ls-tree --full-tree -r --name-only HEAD
 
-* Currently, the entry file is configured to be <YOUR_PROJECT_ROOT>/main.py. If your entry file is
-  not this file, please open config.py and change variable 'main_entry_file'.
+* You should specify the path of your odps command-line tool by changing odps_path in config.py
+
+* You may ignore certain folders by changing tar_exclude option in config.py
+
+* You can select the entry for of your pai job by changing pai_main_entry_file option in config.py
 
 * To add hyperparameter or any other pai command arguments, please open deploy.py and change variable
   'pai_command'.
 
 * You may use optional flag --suppress_stderr to hide messages from stderr.
 
-""", formatter_class=argparse.RawTextHelpFormatter)
+* If you want to monitor a job that has already been deployed, use --job_url option and provide
+  the job url of your job
 
-parser.add_argument('odps_path', help='Path to odps console')
+""", formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('--instance_id', default=None, help='An already existed instance id')
 parser.add_argument('--job_url', default=None, help='An already existed job url')
 parser.add_argument('--suppress_stderr', action='store_true')
 args = parser.parse_args()
 
 # Path to odps console
-odps_path = args.odps_path
+odps_path = deploy_config['odps_path']
 
 # Instance ID and job url from odps
 instance_id, job_url = args.instance_id, args.job_url
@@ -63,10 +67,15 @@ if detect_platform() == "WINDOWS":
 
 def task_launch_tar():
     # Start tar process
+    cd_cmd = "cd `git rev-parse --show-toplevel`"
+    list_cmd = "git ls-tree --full-tree -r --name-only HEAD"
+    tar_cmd = "tar -czvf \"" + tar_ball_location + "\""
+    for exclude in deploy_config['tar_exclude']:
+        tar_cmd += " --exclude \"{}\"".format(exclude)
+    tar_cmd += " -T -"
+
     tar_process = subprocess.Popen(["bash", "-c",
-                                    "cd `git rev-parse --show-toplevel`;"
-                                    + "git ls-tree --full-tree -r --name-only HEAD | "
-                                    + "tar -czvf \"" + tar_ball_location + "\" -T -"],
+                                    cd_cmd + ";" + list_cmd + " | " + tar_cmd],
                                    stdout=subprocess.PIPE)
     tar_stdout_thread = threading.Thread(target=forward_fd, args=(tar_process.stdout, sys.stdout, None,
                                                                   lambda: tar_process.poll() is None))

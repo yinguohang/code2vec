@@ -1,4 +1,6 @@
 import os
+
+import numpy as np
 import tensorflow as tf
 
 from . import utils
@@ -17,6 +19,9 @@ data_set = {
 
 
 def init():
+    np.random.seed(123)
+    tf.set_random_seed(123)
+
     flags = tf.app.flags
 
     ############################
@@ -34,18 +39,16 @@ def init():
                         "Absolute path of log directory")
 
     # Model Settings
-    flags.DEFINE_string("optimizer", "adam", "Selected optimizer")
-
-    if flags.FLAGS.optimizer == "adam":
-        flags.DEFINE_string("learning_rate", 0.0001, "Learning rate")
-    elif flags.FLAGS.optimizer == "adadelta":
-        flags.DEFINE_string("learning_rate", 1.0, "Learning rate")
-
     flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 
     flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
 
     flags.DEFINE_float("dropout_rate", 0.5, "Dropout rate")
+
+    # code2vec Settings
+    flags.DEFINE_string("optimizer", "adam", "Selected optimizer")
+
+    flags.DEFINE_float("learning_rate", 0.0001, "Learning rate")
 
     flags.DEFINE_integer("classification", -1,
                          "Number of class for classification, or use regression if less than 1")

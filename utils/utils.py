@@ -1,4 +1,8 @@
+import hashlib
 import logging
+import tempfile
+
+import numpy as np
 import os
 import platform
 import sys
@@ -7,12 +11,16 @@ import time
 import tensorflow as tf
 from tensorflow.python.framework.errors_impl import UnimplementedError, NotFoundError
 
+from numpy.compat import (basestring, is_pathlib_path)
+
 
 def get_optimizer(optimizer, learning_rate):
     if optimizer == "adadelta":
         return tf.train.AdadeltaOptimizer(learning_rate)
     if optimizer == "adam":
         return tf.train.AdamOptimizer(learning_rate)
+    if optimizer == "gd":
+        return tf.train.GradientDescentOptimizer(learning_rate)
     raise RuntimeError("Unknown optimizer " + optimizer)
 
 
@@ -25,6 +33,21 @@ def detect_platform():
     except NotFoundError:
         pass
     return 'PAI' if is_pai else platform.system().upper()
+
+
+def file_checksum(filename):
+    """
+    Compute md5 checksum of the file with given name
+
+    :param filename:  Name of the file
+    :return:          Md5 checksum of the file
+    """
+    hash_md5 = hashlib.md5()
+    with tf.gfile.Open(filename, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+        f.close()
+    return hash_md5.hexdigest()
 
 
 def init_tf_logging(log_path):
@@ -59,12 +82,30 @@ def init_tf_logging(log_path):
     ch.setFormatter(formatter)
 
     # Init logging
-    if tf.__version__ < "1.5.0":
-        logger = tf.logging._logger
-    else:
-        logger = tf.logging.__get_logger()
+    logger = logging.getLogger('tensorflow')
     for handler in logger.handlers:
         logger.removeHandler(handler)
     logger.addHandler(ch)
     logger.addHandler(fh)
     logger.setLevel(logging.DEBUG)
+
+
+def np_savez_compressed(file, *args, **kwds):
+    """
+    A wrapper for np.savez_compressed() to make it work with tf.gfile
+    """
+    if isinstance(file, basestring):
+        if not file.endswith('.npz'):
+            file = file + '.npz'
+    elif is_pathlib_path(file):
+        if not file.name.endswith('.npz'):
+            file = file.parent / (file.name + '.npz')
+    else:
+        raise RuntimeError("Please specify filename in string format")
+
+    zip_fd, zip_tempfile = tempfile.mkstemp(suffix='.npz')
+    np.savez_compressed(zip_tempfile, *args, **kwds)
+
+    tf.gfile.MakeDirs(os.path.dirname(file))
+    tf.gfile.Copy(zip_tempfile, file, overwrite=True)
+    os.close(zip_fd)
